@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/hex"
+	"flag"
 	"fmt"
+	"os"
 	"slices"
 
 	"periph.io/x/conn/v3/gpio"
@@ -13,6 +15,16 @@ import (
 )
 
 func main() {
+	var (
+		nread   int
+		jidOnly bool
+		outFile string
+	)
+	flag.IntVar(&nread, "n", 256, "number of bytes to read")
+	flag.BoolVar(&jidOnly, "jid", false, "only print JEDEC ID")
+	flag.StringVar(&outFile, "o", "", "output file (default: hexdump)")
+	flag.Parse()
+
 	if _, err := host.Init(); err != nil {
 		fmt.Println("host initialization failed:", err)
 		return
@@ -53,18 +65,28 @@ func main() {
 		fmt.Println("read JEDEC ID failed:", err)
 		return
 	}
+	if jidOnly {
+		fmt.Printf("%X\n", jedecID[:3])
+		return
+	}
 	jedecMicronN25Q032 := []byte{0x20, 0xBA, 0x16}
 	if !slices.Equal(jedecID[:3], jedecMicronN25Q032) {
 		fmt.Printf("JEDEC ID does not match Micron 32Mbit N25Q032 SPI flash (%X)\n", jedecID[:3])
 		return
 	}
 
-	data, err := readFlash(conn, cs, 0, 256)
+	data, err := readFlash(conn, cs, 0, nread)
 	if err != nil {
 		fmt.Println("read flash failed", err)
 		return
 	}
-	fmt.Println(hex.Dump(data))
+	if outFile == "" {
+		fmt.Println(hex.Dump(data))
+		return
+	}
+	if err := os.WriteFile(outFile, data, 0644); err != nil {
+		fmt.Println("write file failed:", err)
+	}
 }
 
 func openFT2232H() *ftdi.FT232H {
