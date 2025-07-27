@@ -44,14 +44,14 @@ func main() {
 	}
 
 	const clk = 30 * physic.MegaHertz // [AS_135 3.2.1 Divisors] specifies range in [92Hz, 30MHz], but periph.io's minimum is 100Hz
-	mode := spi.Mode0                 // Mode0 and Mode3 are supported [n25q_32mb_3v_65nm.pdf Table 7: SPI Modes]
+	mode := spi.Mode0                 // Mode0 and Mode3 are supported [n25q_32mb_3v_65nm.pdf|Table 7: SPI Modes]
 	conn, err := sp.Connect(clk, mode, 8)
 	if err != nil {
 		fmt.Println("SPI connection failed:", err)
 		return
 	}
 
-	// [EB82 Appendix A. Sheet 2 of 5 (USB to SPI/RS232)]
+	// [EB82|Appendix A. Sheet 2 of 5 (USB to SPI/RS232)]
 	// ADBUS0 | 16 | iCE_SCK
 	// ADBUS1 | 17 | iCE_SI
 	// ADBUS2 | 18 | iCE_SO
@@ -112,8 +112,8 @@ func openFT2232H() *ftdi.FT232H {
 	return nil
 }
 
-// [n25q_32mb_3v_65nm.pdf Table 16: Command Set]
-// [W25Q128JV-DTR 8.1.2 Instruction Set Table 1]
+// [n25q_32mb_3v_65nm.pdf|Table 16: Command Set]
+// [W25Q128JV-DTR|8.1.2 Instruction Set Table 1]
 const (
 	cmdReleasePowerDown = 0xAB
 	cmdReadJEDECID      = 0x9F
@@ -134,12 +134,11 @@ func releasePowerDown(cs gpio.PinOut, conn spi.Conn) error {
 	return err
 }
 
-var (
-	jedecMicronN25Q032      = []byte{0x20, 0xBA, 0x16}
-	jedecWinbondW25Q128JVIM = []byte{0xEF, 0x70, 0x18}
-)
-
 func isKnownJEDECID(jedecID []byte) bool {
+	var (
+		jedecMicronN25Q032      = []byte{0x20, 0xBA, 0x16}
+		jedecWinbondW25Q128JVIM = []byte{0xEF, 0x70, 0x18}
+	)
 	id := jedecID[:3]
 	return slices.Equal(id, jedecMicronN25Q032) || slices.Equal(id, jedecWinbondW25Q128JVIM)
 }
