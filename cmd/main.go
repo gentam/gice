@@ -69,10 +69,8 @@ func main() {
 		fmt.Printf("%X\n", jedecID[:3])
 		return
 	}
-	jedecMicronN25Q032 := []byte{0x20, 0xBA, 0x16}
-	if !slices.Equal(jedecID[:3], jedecMicronN25Q032) {
-		fmt.Printf("JEDEC ID does not match Micron 32Mbit N25Q032 SPI flash (%X)\n", jedecID[:3])
-		return
+	if !isKnownJEDECID(jedecID) {
+		fmt.Fprintf(os.Stderr, "unknown JEDEC ID (%X)\n", jedecID[:3])
 	}
 
 	data, err := readFlash(conn, cs, 0, nread)
@@ -110,9 +108,19 @@ func openFT2232H() *ftdi.FT232H {
 
 // [n25q_32mb_3v_65nm.pdf Table 16: Command Set]
 const (
-	cmdReadID = 0x9F
-	cmdRead   = 0x03
+	cmdReadJEDECID = 0x9F
+	cmdRead        = 0x03
 )
+
+var (
+	jedecMicronN25Q032      = []byte{0x20, 0xBA, 0x16}
+	jedecWinbondW25Q128JVIM = []byte{0xEF, 0x70, 0x18}
+)
+
+func isKnownJEDECID(jedecID []byte) bool {
+	id := jedecID[:3]
+	return slices.Equal(id, jedecMicronN25Q032) || slices.Equal(id, jedecWinbondW25Q128JVIM)
+}
 
 func readJEDECID(cs gpio.PinOut, conn spi.Conn) (id []byte, err error) {
 	buf := make([]byte, 4) // command + 3 bytes ID
