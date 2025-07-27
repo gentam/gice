@@ -18,11 +18,11 @@ import (
 func main() {
 	var (
 		nread   int
-		jidOnly bool
+		idOnly  bool
 		outFile string
 	)
 	flag.IntVar(&nread, "n", 256, "number of bytes to read")
-	flag.BoolVar(&jidOnly, "jid", false, "only print JEDEC ID")
+	flag.BoolVar(&idOnly, "id", false, "only print flash ID")
 	flag.StringVar(&outFile, "o", "", "output file (default: hexdump)")
 	flag.Parse()
 
@@ -66,17 +66,17 @@ func main() {
 		return
 	}
 
-	jedecID, err := readJEDECID(cs, conn)
+	flashID, err := readFlashID(cs, conn)
 	if err != nil {
-		fmt.Println("read JEDEC ID failed:", err)
+		fmt.Fprintln(os.Stderr, "read flash ID failed:", err)
 		return
 	}
-	if jidOnly {
-		fmt.Printf("%X\n", jedecID[:3])
+	if idOnly {
+		fmt.Printf("%X\n", flashID[:3])
 		return
 	}
-	if !isKnownJEDECID(jedecID) {
-		fmt.Fprintf(os.Stderr, "unknown JEDEC ID (%X)\n", jedecID[:3])
+	if !isKnownFlashID(flashID) {
+		fmt.Fprintf(os.Stderr, "unknown flash ID (%X)\n", flashID[:3])
 	}
 
 	data, err := readFlash(conn, cs, 0, nread)
@@ -116,7 +116,7 @@ func openFT2232H() *ftdi.FT232H {
 // [W25Q128JV-DTR|8.1.2 Instruction Set Table 1]
 const (
 	cmdReleasePowerDown = 0xAB
-	cmdReadJEDECID      = 0x9F
+	cmdReadID           = 0x9F
 	cmdRead             = 0x03
 )
 
@@ -134,17 +134,17 @@ func releasePowerDown(cs gpio.PinOut, conn spi.Conn) error {
 	return err
 }
 
-func isKnownJEDECID(jedecID []byte) bool {
+func isKnownFlashID(flashID []byte) bool {
 	var (
-		jedecMicronN25Q032      = []byte{0x20, 0xBA, 0x16}
-		jedecWinbondW25Q128JVIM = []byte{0xEF, 0x70, 0x18}
+		idMicronN25Q032      = []byte{0x20, 0xBA, 0x16}
+		idWinbondW25Q128JVIM = []byte{0xEF, 0x70, 0x18}
 	)
-	id := jedecID[:3]
-	return slices.Equal(id, jedecMicronN25Q032) || slices.Equal(id, jedecWinbondW25Q128JVIM)
+	id := flashID[:3]
+	return slices.Equal(id, idMicronN25Q032) || slices.Equal(id, idWinbondW25Q128JVIM)
 }
 
-func readJEDECID(cs gpio.PinOut, conn spi.Conn) (id []byte, err error) {
-	buf := []byte{cmdReadJEDECID, 0, 0, 0}
+func readFlashID(cs gpio.PinOut, conn spi.Conn) (id []byte, err error) {
+	buf := []byte{cmdReadID, 0, 0, 0}
 	if err = cs.Out(gpio.Low); err != nil {
 		return
 	}
