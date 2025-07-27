@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"time"
 
 	"periph.io/x/conn/v3/gpio"
 	"periph.io/x/conn/v3/physic"
@@ -60,6 +61,11 @@ func main() {
 
 	cs := ft.D4 // ADBUS4 (GPIOLO → CS)
 
+	if err := releasePowerDown(cs, conn); err != nil {
+		fmt.Println("release power down failed:", err)
+		return
+	}
+
 	jedecID, err := readJEDECID(cs, conn)
 	if err != nil {
 		fmt.Println("read JEDEC ID failed:", err)
@@ -107,10 +113,26 @@ func openFT2232H() *ftdi.FT232H {
 }
 
 // [n25q_32mb_3v_65nm.pdf Table 16: Command Set]
+// [W25Q128JV-DTR 8.1.2 Instruction Set Table 1]
 const (
-	cmdReadJEDECID = 0x9F
-	cmdRead        = 0x03
+	cmdReleasePowerDown = 0xAB
+	cmdReadJEDECID      = 0x9F
+	cmdRead             = 0x03
 )
+
+func releasePowerDown(cs gpio.PinOut, conn spi.Conn) error {
+	buf := []byte{cmdReleasePowerDown, 0, 0, 0, 0}
+	if err := cs.Out(gpio.Low); err != nil {
+		return err
+	}
+	if err := conn.Tx(buf, buf); err != nil {
+		cs.Out(gpio.High)
+		return err
+	}
+	// [W25Q128JV-DTR 9.6 AC Electrical Characteristics: tRES1]
+	time.Sleep(3 * time.Microsecond)
+	return cs.Out(gpio.High)
+}
 
 var (
 	jedecMicronN25Q032      = []byte{0x20, 0xBA, 0x16}
@@ -123,20 +145,15 @@ func isKnownJEDECID(jedecID []byte) bool {
 }
 
 func readJEDECID(cs gpio.PinOut, conn spi.Conn) (id []byte, err error) {
-	buf := make([]byte, 4) // command + 3 bytes ID
-	buf[0] = cmdReadID
+	buf := []byte{cmdReadJEDECID, 0, 0, 0}
 	if err = cs.Out(gpio.Low); err != nil {
 		return
 	}
-	defer func() {
-		if csErr := cs.Out(gpio.High); csErr != nil && err == nil {
-			err = csErr
-		}
-	}()
 	if err = conn.Tx(buf, buf); err != nil {
+		cs.Out(gpio.High)
 		return
 	}
-	return buf[1:], nil
+	return buf[1:], cs.Out(gpio.High)
 }
 
 // readFlash splits the read operation into multiple transactions to avoid
