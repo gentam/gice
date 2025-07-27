@@ -151,12 +151,16 @@ func readFlash(conn spi.Conn, cs gpio.PinOut, addr, n int) ([]byte, error) {
 		buf[3] = byte(addr)
 		// tx[4:] dummy bytes
 
-		cs.Out(gpio.Low)
-		if err := conn.Tx(buf, buf); err != nil {
-			cs.Out(gpio.High)
+		if err := cs.Out(gpio.Low); err != nil {
 			return nil, err
 		}
-		cs.Out(gpio.High)
+		txErr := conn.Tx(buf, buf)
+		if csErr := cs.Out(gpio.High); csErr != nil {
+			return nil, csErr
+		}
+		if txErr != nil {
+			return nil, txErr
+		}
 
 		copy(out[off:], buf[cmdBytes:])
 
