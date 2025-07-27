@@ -129,9 +129,9 @@ func releasePowerDown(cs gpio.PinOut, conn spi.Conn) error {
 		cs.Out(gpio.High)
 		return err
 	}
-	// [W25Q128JV-DTR 9.6 AC Electrical Characteristics: tRES1]
-	time.Sleep(3 * time.Microsecond)
-	return cs.Out(gpio.High)
+	err := cs.Out(gpio.High)
+	time.Sleep(3 * time.Microsecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tRES1]
+	return err
 }
 
 var (
