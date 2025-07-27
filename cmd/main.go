@@ -120,11 +120,12 @@ func readJEDECID(cs gpio.PinOut, conn spi.Conn) (id []byte, err error) {
 	if err = cs.Out(gpio.Low); err != nil {
 		return
 	}
+	defer func() {
+		if csErr := cs.Out(gpio.High); csErr != nil && err == nil {
+			err = csErr
+		}
+	}()
 	if err = conn.Tx(buf, buf); err != nil {
-		fmt.Println("SPI transaction failed:", err)
-		return
-	}
-	if err = cs.Out(gpio.High); err != nil {
 		return
 	}
 	return buf[1:], nil
