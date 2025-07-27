@@ -27,19 +27,19 @@ func main() {
 	flag.Parse()
 
 	if _, err := host.Init(); err != nil {
-		fmt.Println("host initialization failed:", err)
+		fmt.Fprintln(os.Stderr, "host initialization failed:", err)
 		return
 	}
 
 	ft := openFT2232H()
 	if ft == nil {
-		fmt.Println("FT2232H device not found")
+		fmt.Fprintln(os.Stderr, "FT2232H device not found")
 		return
 	}
 
 	sp, err := ft.SPI()
 	if err != nil {
-		fmt.Println("failed to get SPI port:", err)
+		fmt.Fprintln(os.Stderr, "failed to get SPI port:", err)
 		return
 	}
 
@@ -47,7 +47,7 @@ func main() {
 	mode := spi.Mode0                 // Mode0 and Mode3 are supported [n25q_32mb_3v_65nm.pdf|Table 7: SPI Modes]
 	conn, err := sp.Connect(clk, mode, 8)
 	if err != nil {
-		fmt.Println("SPI connection failed:", err)
+		fmt.Fprintln(os.Stderr, "SPI connection failed:", err)
 		return
 	}
 
@@ -62,7 +62,7 @@ func main() {
 	cs := ft.D4 // ADBUS4 (GPIOLO → CS)
 
 	if err := releasePowerDown(cs, conn); err != nil {
-		fmt.Println("release power down failed:", err)
+		fmt.Fprintln(os.Stderr, "release power down failed:", err)
 		return
 	}
 
@@ -81,7 +81,7 @@ func main() {
 
 	data, err := readFlash(conn, cs, 0, nread)
 	if err != nil {
-		fmt.Println("read flash failed", err)
+		fmt.Fprintln(os.Stderr, "read flash failed:", err)
 		return
 	}
 	if outFile == "" {
@@ -89,7 +89,7 @@ func main() {
 		return
 	}
 	if err := os.WriteFile(outFile, data, 0644); err != nil {
-		fmt.Println("write file failed:", err)
+		fmt.Fprintln(os.Stderr, "write file failed:", err)
 	}
 }
 
