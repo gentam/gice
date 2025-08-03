@@ -43,9 +43,9 @@ func main() {
 
 	switch cmd := flag.Arg(0); cmd {
 	case "read":
-		readCmd(flag.Args()[1:])
+		readCommand(flag.Args()[1:])
 	case "write":
-		writeCmd(flag.Args()[1:])
+		writeCommand(flag.Args()[1:])
 	case "help":
 		usage()
 	default:
@@ -88,7 +88,6 @@ func connectSPI() (spi.Conn, gpio.PinIO, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get SPI port: %w", err)
 	}
-	defer sp.Close()
 
 	const clk = 30 * physic.MegaHertz // [AS_135 3.2.1 Divisors] specifies range in [92Hz, 30MHz], but periph.io's minimum is 100Hz
 	mode := spi.Mode0                 // Mode0 and Mode3 are supported [n25q_32mb_3v_65nm.pdf|Table 7: SPI Modes]
