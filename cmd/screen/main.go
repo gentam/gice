@@ -9,7 +9,11 @@ import (
 )
 
 func main() {
-	fd, err := syscall.Open("/dev/cu.usbserial-2101", syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_CLOEXEC, 0)
+	path := "/dev/cu.usbserial-2101"
+	if len(os.Args) > 1 {
+		path = os.Args[1]
+	}
+	fd, err := syscall.Open(path, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_CLOEXEC, 0)
 	if err != nil {
 		log.Fatal(err)
 	}
