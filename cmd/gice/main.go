@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"slices"
 	"time"
 
 	"periph.io/x/conn/v3/gpio"
@@ -71,12 +70,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "read flash ID failed:", err)
 		return
 	}
+	name, known := isKnownFlashID(flashID)
 	if idOnly {
-		fmt.Printf("%X\n", flashID[:3])
+		fmt.Printf("%X\t%s\n", flashID, name)
 		return
 	}
-	if !isKnownFlashID(flashID) {
-		fmt.Fprintf(os.Stderr, "unknown flash ID (%X)\n", flashID[:3])
+	if !known {
+		fmt.Fprintf(os.Stderr, "unknown flash ID (%X)\n", flashID)
 	}
 
 	data, err := readFlash(conn, cs, 0, nread)
@@ -134,16 +134,21 @@ func releasePowerDown(cs gpio.PinOut, conn spi.Conn) error {
 	return err
 }
 
-func isKnownFlashID(flashID []byte) bool {
-	var (
-		idMicronN25Q032      = []byte{0x20, 0xBA, 0x16}
-		idWinbondW25Q128JVIM = []byte{0xEF, 0x70, 0x18}
-	)
-	id := flashID[:3]
-	return slices.Equal(id, idMicronN25Q032) || slices.Equal(id, idWinbondW25Q128JVIM)
+var (
+	knownFlashIDs = map[[3]byte]string{
+		{0x20, 0xBA, 0x16}: "Micron N25Q032",
+		{0xEF, 0x70, 0x18}: "Winbond W25Q128JVIM",
+	}
+)
+
+func isKnownFlashID(id [3]byte) (string, bool) {
+	if name, ok := knownFlashIDs[id]; ok {
+		return name, true
+	}
+	return "", false
 }
 
-func readFlashID(cs gpio.PinOut, conn spi.Conn) (id []byte, err error) {
+func readFlashID(cs gpio.PinOut, conn spi.Conn) (id [3]byte, err error) {
 	buf := []byte{cmdReadID, 0, 0, 0}
 	if err = cs.Out(gpio.Low); err != nil {
 		return
@@ -152,7 +157,7 @@ func readFlashID(cs gpio.PinOut, conn spi.Conn) (id []byte, err error) {
 		cs.Out(gpio.High)
 		return
 	}
-	return buf[1:], cs.Out(gpio.High)
+	return [3]byte(buf[1:]), cs.Out(gpio.High)
 }
 
 // readFlash splits the read operation into multiple transactions to avoid
