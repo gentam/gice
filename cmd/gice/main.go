@@ -14,16 +14,52 @@ import (
 	"periph.io/x/host/v3/ftdi"
 )
 
+func fatalf(format string, a ...any) {
+	fmt.Fprintf(os.Stderr, format+"\n", a...)
+	os.Exit(2)
+}
+
+func usage() {
+	fmt.Fprintf(os.Stderr, `Usage:
+	gice <command> [arguments]
+
+Commands:
+	read	 read flash memory
+	write	 write flash memory
+`)
+	os.Exit(2)
+}
+
 func main() {
+	flag.Usage = usage
+	flag.Parse()
+	if flag.NArg() == 0 {
+		usage()
+	}
+
+	switch cmd := flag.Arg(0); cmd {
+	case "read":
+		readCmd(flag.Args()[1:])
+	case "write":
+		fatalf("not implemented")
+	case "help":
+		usage()
+	default:
+		fatalf("Unknown command: %q", cmd)
+	}
+}
+
+func readCmd(args []string) {
+	fs := flag.NewFlagSet("read", flag.ExitOnError)
 	var (
 		nread   int
 		idOnly  bool
 		outFile string
 	)
-	flag.IntVar(&nread, "n", 256, "number of bytes to read")
-	flag.BoolVar(&idOnly, "id", false, "only print flash ID")
-	flag.StringVar(&outFile, "o", "", "output file (default: hexdump)")
-	flag.Parse()
+	fs.IntVar(&nread, "n", 256, "number of bytes to read")
+	fs.BoolVar(&idOnly, "id", false, "only print flash ID and exit")
+	fs.StringVar(&outFile, "o", "", "output file (default: hexdump)")
+	fs.Parse(args)
 
 	if _, err := host.Init(); err != nil {
 		fmt.Fprintln(os.Stderr, "host initialization failed:", err)
