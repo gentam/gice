@@ -19,16 +19,16 @@ func readCommand(args []string) {
 	fs.StringVar(&outFile, "o", "", "output file (default: hexdump)")
 	fs.Parse(args)
 
-	conn, cs, err := connectSPI()
+	d, err := NewDevice()
 	if err != nil {
-		fatalf("SPI connection failed: %v", err)
+		fatalf("failed create device: %v", err)
 	}
 
-	if err := releasePowerDown(conn, cs); err != nil {
+	if err := d.releasePowerDown(); err != nil {
 		fatalf("release power down failed: %v", err)
 	}
 
-	flashID, err := readFlashID(conn, cs)
+	flashID, err := readFlashID(d.conn, d.cs)
 	if err != nil {
 		fatalf("read flash ID failed: %v", err)
 	}
@@ -41,7 +41,7 @@ func readCommand(args []string) {
 		fmt.Fprintf(os.Stderr, "unknown flash ID (%X)\n", flashID)
 	}
 
-	data, err := readFlash(conn, cs, 0, nread)
+	data, err := readFlash(d.conn, d.cs, 0, nread)
 	if err != nil {
 		fatalf("read flash failed: %v", err)
 	}

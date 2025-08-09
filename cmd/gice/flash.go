@@ -27,20 +27,6 @@ func isKnownFlashID(id [3]byte) (string, bool) {
 	return "", false
 }
 
-func releasePowerDown(conn spi.Conn, cs gpio.PinOut) error {
-	buf := []byte{flashCmdReleasePowerDown, 0, 0, 0, 0}
-	if err := cs.Out(gpio.Low); err != nil {
-		return err
-	}
-	if err := conn.Tx(buf, buf); err != nil {
-		cs.Out(gpio.High)
-		return err
-	}
-	err := cs.Out(gpio.High)
-	time.Sleep(3 * time.Microsecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tRES1]
-	return err
-}
-
 func readFlashID(conn spi.Conn, cs gpio.PinOut) (id [3]byte, err error) {
 	buf := []byte{flashCmdReadID, 0, 0, 0}
 	if err = cs.Out(gpio.Low); err != nil {
