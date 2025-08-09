@@ -94,7 +94,7 @@ func (d *Device) connectSPI() (err error) {
 	return err
 }
 
-func (d *Device) releasePowerDown() error {
+func (d *Device) ReleasePowerDown() error {
 	buf := []byte{flashCmdReleasePowerDown, 0, 0, 0, 0}
 	if err := d.cs.Out(gpio.Low); err != nil {
 		return err
@@ -127,14 +127,14 @@ var knownFlashIDs = map[[3]byte]string{
 	{0xEF, 0x70, 0x18}: "Winbond W25Q128JVIM",
 }
 
-func (d *Device) isKnownFlashID(id [3]byte) (string, bool) {
+func (d *Device) IsKnownFlashID(id [3]byte) (string, bool) {
 	if name, ok := knownFlashIDs[id]; ok {
 		return name, true
 	}
 	return "", false
 }
 
-func (d *Device) readFlashID() (id [3]byte, err error) {
+func (d *Device) ReadFlashID() (id [3]byte, err error) {
 	buf := make([]byte, 4)
 	buf[0] = flashCmdReadID
 	fmt.Printf("%X\n", buf)
@@ -152,9 +152,9 @@ func (d *Device) readFlashID() (id [3]byte, err error) {
 	return [3]byte(buf[1:]), err
 }
 
-// readFlash splits the read operation into multiple transactions to avoid
+// ReadFlash splits the read operation into multiple transactions to avoid
 // exceeding the maximum transaction size.
-func (d *Device) readFlash(addr, n int) ([]byte, error) {
+func (d *Device) ReadFlash(addr, n int) ([]byte, error) {
 	const (
 		maxTx    = 65536 // [AN_108]
 		cmdBytes = 4     // opRead + 24‑bit address
@@ -235,7 +235,7 @@ func (d *Device) programFlash(addr int, data []byte) error {
 	return nil
 }
 
-func (d *Device) writeFlash(r io.Reader) error {
+func (d *Device) WriteFlash(r io.Reader) error {
 	buf := [256]byte{}
 	addr := 0
 	for {
