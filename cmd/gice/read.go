@@ -28,11 +28,11 @@ func readCommand(args []string) {
 		fatalf("release power down failed: %v", err)
 	}
 
-	flashID, err := readFlashID(d.conn, d.cs)
+	flashID, err := d.readFlashID()
 	if err != nil {
 		fatalf("read flash ID failed: %v", err)
 	}
-	name, known := isKnownFlashID(flashID)
+	name, known := d.isKnownFlashID(flashID)
 	if idOnly {
 		fmt.Printf("%X\t%s\n", flashID, name)
 		return
@@ -41,7 +41,7 @@ func readCommand(args []string) {
 		fmt.Fprintf(os.Stderr, "unknown flash ID (%X)\n", flashID)
 	}
 
-	data, err := readFlash(d.conn, d.cs, 0, nread)
+	data, err := d.readFlash(0, nread)
 	if err != nil {
 		fatalf("read flash failed: %v", err)
 	}

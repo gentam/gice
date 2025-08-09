@@ -28,7 +28,7 @@ func writeCommand(args []string) {
 		fatalf("failed open device: %v", err)
 	}
 
-	if err := writeFlash(d.conn, d.cs, file); err != nil {
+	if err := d.writeFlash(file); err != nil {
 		fatalf("failed to write flash: %v", err)
 	}
 }
