@@ -23,6 +23,7 @@ func usage() {
 Commands:
 	read	 read flash memory
 	write	 write flash memory
+	info	 print device information
 `)
 	os.Exit(2)
 }
@@ -39,6 +40,8 @@ func main() {
 		readCommand(flag.Args()[1:])
 	case "write":
 		writeCommand(flag.Args()[1:])
+	case "info":
+		infoCommand()
 	case "help":
 		usage()
 	default:
