@@ -28,6 +28,11 @@ func writeCommand(args []string) {
 		fatalf("%v", err)
 	}
 
+	if err := d.FlashPowerUp(); err != nil {
+		fatalf("flash power up failed: %v", err)
+	}
+	defer d.FlashPowerDown()
+
 	if err := d.WriteFlash(file); err != nil {
 		fatalf("failed to write flash: %v", err)
 	}

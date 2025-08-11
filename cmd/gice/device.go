@@ -57,6 +57,20 @@ func NewDevice() (*Device, error) {
 	return d, nil
 }
 
+// flashExec wraps SPI transactions with CS assertion.
+func (d *Device) flashExec(tx func() error) (err error) {
+	if err = d.cs.Out(gpio.Low); err != nil {
+		return err
+	}
+	defer func() {
+		if csErr := d.cs.Out(gpio.High); csErr != nil && err == nil {
+			err = csErr
+		}
+	}()
+	err = tx()
+	return
+}
+
 func (d *Device) openFT2232H() error {
 	const (
 		vendorID  = 0x0403 // FTDI
@@ -94,28 +108,13 @@ func (d *Device) connectSPI() (err error) {
 	return err
 }
 
-func (d *Device) ReleasePowerDown() error {
-	buf := []byte{flashCmdReleasePowerDown, 0, 0, 0, 0}
-	if err := d.cs.Out(gpio.Low); err != nil {
-		return err
-	}
-	if err := d.conn.Tx(buf, buf); err != nil {
-		d.cs.Out(gpio.High)
-		return err
-	}
-	if err := d.cs.Out(gpio.High); err != nil {
-		return err
-	}
-	time.Sleep(3 * time.Microsecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tRES1]
-	return nil
-}
-
 // Flash operations
 
 // [n25q_32mb_3v_65nm.pdf|Table 16: Command Set]
 // [W25Q128JV-DTR|8.1.2 Instruction Set Table 1]
 const (
 	flashCmdReleasePowerDown = 0xAB
+	flashCmdPowerDown        = 0xB9
 	flashCmdReadID           = 0x9F
 	flashCmdRead             = 0x03
 	flashCmdWriteEnable      = 0x06
@@ -132,6 +131,28 @@ func (d *Device) IsKnownFlashID(id [3]byte) (string, bool) {
 		return name, true
 	}
 	return "", false
+}
+
+func (d *Device) FlashPowerUp() error {
+	buf := []byte{flashCmdReleasePowerDown}
+	if err := d.flashExec(func() error {
+		return d.conn.Tx(buf, buf)
+	}); err != nil {
+		return err
+	}
+	time.Sleep(3 * time.Microsecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tRES1]
+	return nil
+}
+
+func (d *Device) FlashPowerDown() error {
+	buf := []byte{flashCmdPowerDown}
+	if err := d.flashExec(func() error {
+		return d.conn.Tx(buf, buf)
+	}); err != nil {
+		return err
+	}
+	time.Sleep(3 * time.Microsecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tDP]
+	return nil
 }
 
 func (d *Device) ReadFlashID() (id [3]byte, err error) {
