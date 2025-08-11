@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"io"
 	"os"
 
 	"github.com/gentam/gice"
@@ -22,14 +21,14 @@ func writeCommand(args []string) {
 		fatalUsage("input file is required")
 	}
 
-	var input io.ReadCloser
+	var file *os.File
 	var err error
 	if filename != "" {
-		input, err = os.Open(filename)
+		file, err = os.Open(filename)
 		if err != nil {
 			fatalf("failed to open file: %v", err)
 		}
-		defer input.Close()
+		defer file.Close()
 	}
 
 	d, err := gice.NewDevice()
@@ -50,7 +49,7 @@ func writeCommand(args []string) {
 			fatalf("bulk erase flash failed: %v", err)
 		}
 	} else {
-		stat, err := input.(*os.File).Stat()
+		stat, err := file.Stat()
 		if err != nil {
 			fatalf("failed to get file size: %v", err)
 		}
@@ -59,8 +58,8 @@ func writeCommand(args []string) {
 		}
 	}
 
-	if input != nil {
-		if err := d.Flash.Write(input); err != nil {
+	if file != nil {
+		if err := d.Flash.Write(file); err != nil {
 			fatalf("write flash failed: %v", err)
 		}
 	}
