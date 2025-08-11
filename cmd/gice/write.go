@@ -10,16 +10,15 @@ import (
 func writeCommand(args []string) {
 	fs := flag.NewFlagSet("write", flag.ExitOnError)
 	var (
-		filename  string
 		bulkErase bool
 	)
-	fs.StringVar(&filename, "f", "", "input file")
 	fs.BoolVar(&bulkErase, "e", false, "bulk erase entire flash")
 	fs.Parse(args)
 
-	if filename == "" && !bulkErase {
+	if fs.NArg() == 0 && !bulkErase {
 		fatalUsage("input file is required")
 	}
+	filename := fs.Arg(0)
 
 	var file *os.File
 	var err error

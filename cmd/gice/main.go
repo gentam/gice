@@ -21,9 +21,14 @@ func usage() {
 	gice <command> [arguments]
 
 Commands:
-	read	 read flash memory
-	write	 write/erase flash memory
-	info	 print device information
+	read [-id] [-n size] [-o file]
+		read flash memory
+
+	write [-e] <file>
+		write/erase flash memory
+
+	info
+		print device information
 `)
 	os.Exit(2)
 }
