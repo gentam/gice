@@ -37,7 +37,7 @@ func NewDevice() (*Device, error) {
 	d := &Device{
 		clock: 30 * physic.MegaHertz, // [AN_135 3.2.1 Divisors]
 	}
-	if err := d.openFT2232H(); err != nil {
+	if err := d.findFT2232H(); err != nil {
 		return nil, err
 	}
 
@@ -78,7 +78,7 @@ func (d *Device) flashExec(tx func() error) (err error) {
 	return
 }
 
-func (d *Device) openFT2232H() error {
+func (d *Device) findFT2232H() error {
 	const (
 		vendorID  = 0x0403 // FTDI
 		productID = 0x6010 // FT2232H
@@ -109,7 +109,7 @@ func (d *Device) connectSPI() (err error) {
 		return fmt.Errorf("failed to get SPI port: %w", err)
 	}
 
-	// [FTDI AN_114|1.2] > FTDI device can only support mode 0 and mode 2 due to the limitation of MPSSE engine
+	// [FTDI AN_114|1.2]> FTDI device can only support mode 0 and mode 2 due to the limitation of MPSSE engine
 	// [n25q_32mb_3v_65nm.pdf|Table 7: SPI Modes] mode 0 and mode 3 are supported
 	mode := spi.Mode0
 	d.conn, err = port.Connect(d.clock, mode, 8)
@@ -127,6 +127,7 @@ const (
 	flashCmdRead             = 0x03
 	flashCmdWriteEnable      = 0x06
 	flashCmdPageProgram      = 0x02
+	flashCmdChipBulkErase    = 0xC7
 )
 
 var knownFlashIDs = map[[3]byte]string{
@@ -265,5 +266,22 @@ func (d *Device) WriteFlash(r io.Reader) error {
 		}
 		addr += n
 	}
+	return nil
+}
+
+func (d *Device) flashBulkErase() error {
+	if err := d.writeEnable(); err != nil {
+		return err
+	}
+
+	buf := []byte{flashCmdChipBulkErase}
+	if err := d.flashExec(func() error {
+		return d.conn.Tx(buf, buf)
+	}); err != nil {
+		return err
+	}
+	// [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tCE]> 200s
+	// [n25q_32mb_3v_65nm.pdf|Table 38: AC Characteristics and Operating Conditions: tBE]> 60s
+	time.Sleep(200 * time.Second) // TODO: check status register to return early?
 	return nil
 }
