@@ -56,7 +56,7 @@ func NewDevice() (*Device, error) {
 		return nil, err
 	}
 
-	d.Flash = NewFlash(d.conn, d.cs)
+	d.Flash = NewFlash(d)
 
 	return d, nil
 }
@@ -84,10 +84,10 @@ func (d *Device) findFT2232H() error {
 		}
 	}
 
-	return errors.New("not found")
+	return errors.New("FT2232H device not found")
 }
 
-func (d *Device) connectSPI() (err error) {
+func (d *Device) connectSPI() error {
 	if d.FTDI == nil {
 		return errors.New("FT2232H device not found")
 	}

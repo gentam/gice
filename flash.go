@@ -15,16 +15,16 @@ type Flash struct {
 	cs   gpio.PinIO
 }
 
-func NewFlash(conn spi.Conn, cs gpio.PinIO) *Flash {
+func NewFlash(d *Device) *Flash {
 	return &Flash{
-		conn: conn,
-		cs:   cs,
+		conn: d.conn,
+		cs:   d.cs,
 	}
 }
 
-// Flash commands
-// [n25q_32mb_3v_65nm.pdf|Table 16: Command Set]
-// [W25Q128JV-DTR|8.1.2 Instruction Set Table 1]
+// Flash commands supported by both Micron N25Q032 and Winbond W25Q128JVIM devices.
+//   - Micron [n25q_32mb_3v_65nm.pdf|Table 16: Command Set]
+//   - Winbond [W25Q128JV-DTR|8.1.2 Instruction Set Table 1]
 const (
 	flashCmdReleasePowerDown = 0xAB
 	flashCmdPowerDown        = 0xB9
