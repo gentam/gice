@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/gentam/gice"
 )
 
 func readCommand(args []string) {
@@ -19,7 +21,7 @@ func readCommand(args []string) {
 	fs.StringVar(&outFile, "o", "", "output file (default: hexdump)")
 	fs.Parse(args)
 
-	d, err := NewDevice()
+	d, err := gice.NewDevice()
 	if err != nil {
 		fatalf("%v", err)
 	}

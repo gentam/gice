@@ -3,25 +3,26 @@ package main
 import (
 	"fmt"
 
+	"github.com/gentam/gice"
 	"periph.io/x/host/v3/ftdi"
 )
 
 func infoCommand() {
-	dev, err := NewDevice()
+	d, err := gice.NewDevice()
 	if err != nil {
 		fatalf("%v", err)
 	}
-	d := dev.ft
+	ft := d.FTDI
 
 	// Reference: https://github.com/periph/cmd/tree/main/ftdi-list
 	i := ftdi.Info{}
-	d.Info(&i)
+	ft.Info(&i)
 	fmt.Printf("Type:            %s\n", i.Type)
 	fmt.Printf("Vendor ID:       %#04x\n", i.VenID)
 	fmt.Printf("Device ID:       %#04x\n", i.DevID)
 
 	ee := ftdi.EEPROM{}
-	if err := d.EEPROM(&ee); err != nil {
+	if err := ft.EEPROM(&ee); err != nil {
 		fatalf("failed to read EEPROM: %v", err)
 	}
 
@@ -36,7 +37,7 @@ func infoCommand() {
 	fmt.Printf("RemoteWakeup:	 %x\n", h.RemoteWakeup)
 	fmt.Printf("PullDownEnable:	 %x\n", h.PullDownEnable)
 
-	for _, p := range d.Header() {
+	for _, p := range ft.Header() {
 		fmt.Printf("%s: %s\n", p, p.Function())
 	}
 }

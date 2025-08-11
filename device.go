@@ -1,4 +1,4 @@
-package main
+package gice
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ import (
 )
 
 type Device struct {
-	ft    *ftdi.FT232H
+	FTDI  *ftdi.FT232H
 	cs    gpio.PinIO // ADBUS4 Chip Select
 	crest gpio.PinIO // ADBUS7 Reset
 	cdone gpio.PinIO // ADBUS6 Done
@@ -48,9 +48,9 @@ func NewDevice() (*Device, error) {
 	// ADBUS4 | iCE_SS_B
 	// ADBUS6 | iCE_CDONE
 	// ADBUS7 | iCE_CRESET / iCE_RESET
-	d.cs = d.ft.D4
-	d.crest = d.ft.D7
-	d.cdone = d.ft.D6
+	d.cs = d.FTDI.D4
+	d.crest = d.FTDI.D7
+	d.cdone = d.FTDI.D6
 
 	if err := d.connectSPI(); err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (d *Device) findFT2232H() error {
 			continue
 		}
 		if ft, ok := dev.(*ftdi.FT232H); ok {
-			d.ft = ft
+			d.FTDI = ft
 			return nil
 		}
 	}
@@ -100,11 +100,11 @@ func (d *Device) findFT2232H() error {
 }
 
 func (d *Device) connectSPI() (err error) {
-	if d.ft == nil {
+	if d.FTDI == nil {
 		return errors.New("FT2232H device not found")
 	}
 
-	port, err := d.ft.SPI()
+	port, err := d.FTDI.SPI()
 	if err != nil {
 		return fmt.Errorf("failed to get SPI port: %w", err)
 	}
@@ -269,7 +269,7 @@ func (d *Device) WriteFlash(r io.Reader) error {
 	return nil
 }
 
-func (d *Device) flashBulkErase() error {
+func (d *Device) FlashBulkErase() error {
 	if err := d.writeEnable(); err != nil {
 		return err
 	}
