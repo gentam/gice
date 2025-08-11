@@ -40,19 +40,19 @@ func writeCommand(args []string) {
 	d.ResetFPGA(false) // prevent FPGA from acting as a SPI master
 	defer d.ResetFPGA(true)
 
-	if err := d.FlashPowerUp(); err != nil {
+	if err := d.Flash.PowerUp(); err != nil {
 		fatalf("flash power up failed: %v", err)
 	}
-	defer d.FlashPowerDown()
+	defer d.Flash.PowerDown()
 
 	if bulkErase {
-		if err := d.FlashBulkErase(); err != nil {
+		if err := d.Flash.BulkErase(); err != nil {
 			fatalf("bulk erase flash failed: %v", err)
 		}
 	}
 
 	if input != nil {
-		if err := d.WriteFlash(input); err != nil {
+		if err := d.Flash.Write(input); err != nil {
 			fatalf("write flash failed: %v", err)
 		}
 	}
