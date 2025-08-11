@@ -24,9 +24,10 @@ func readCommand(args []string) {
 		fatalf("%v", err)
 	}
 
-	if err := d.ReleasePowerDown(); err != nil {
-		fatalf("release power down failed: %v", err)
+	if err := d.FlashPowerUp(); err != nil {
+		fatalf("flash power up failed: %v", err)
 	}
+	defer d.FlashPowerDown()
 
 	flashID, err := d.ReadFlashID()
 	if err != nil {
