@@ -155,21 +155,17 @@ func (d *Device) FlashPowerDown() error {
 	return nil
 }
 
+// ReadFlashID reads the JEDEC ID from the flash chip.
+// Extended device string is ignored.
 func (d *Device) ReadFlashID() (id [3]byte, err error) {
 	buf := make([]byte, 4)
 	buf[0] = flashCmdReadID
-	fmt.Printf("%X\n", buf)
-	d.cs.Out(gpio.High)
-	time.Sleep(time.Millisecond)
-	if err = d.cs.Out(gpio.Low); err != nil {
+
+	if err = d.flashExec(func() error {
+		return d.conn.Tx(buf, buf)
+	}); err != nil {
 		return
 	}
-	if err = d.conn.Tx(buf, buf); err != nil {
-		d.cs.Out(gpio.High)
-		return
-	}
-	err = d.cs.Out(gpio.High)
-	time.Sleep(time.Millisecond)
 	return [3]byte(buf[1:]), err
 }
 
@@ -193,15 +189,10 @@ func (d *Device) ReadFlash(addr, n int) ([]byte, error) {
 		buf[3] = byte(addr)
 		// tx[4:] dummy bytes
 
-		if err := d.cs.Out(gpio.Low); err != nil {
+		if err := d.flashExec(func() error {
+			return d.conn.Tx(buf, buf)
+		}); err != nil {
 			return nil, err
-		}
-		txErr := d.conn.Tx(buf, buf)
-		if csErr := d.cs.Out(gpio.High); csErr != nil {
-			return nil, csErr
-		}
-		if txErr != nil {
-			return nil, txErr
 		}
 
 		copy(out[off:], buf[cmdBytes:])
@@ -215,14 +206,9 @@ func (d *Device) ReadFlash(addr, n int) ([]byte, error) {
 
 func (d *Device) writeEnable() error {
 	buf := []byte{flashCmdWriteEnable}
-	if err := d.cs.Out(gpio.Low); err != nil {
-		return err
-	}
-	if err := d.conn.Tx(buf, buf); err != nil {
-		d.cs.Out(gpio.High)
-		return err
-	}
-	return d.cs.Out(gpio.High)
+	return d.flashExec(func() error {
+		return d.conn.Tx(buf, buf)
+	})
 }
 
 // addr: 24 bit
@@ -242,14 +228,9 @@ func (d *Device) programFlash(addr int, data []byte) error {
 	buf[3] = byte(addr)
 	copy(buf[4:], data)
 
-	if err := d.cs.Out(gpio.Low); err != nil {
-		return err
-	}
-	if err := d.conn.Tx(buf, buf); err != nil {
-		d.cs.Out(gpio.High)
-		return err
-	}
-	if err := d.cs.Out(gpio.High); err != nil {
+	if err := d.flashExec(func() error {
+		return d.conn.Tx(buf, buf)
+	}); err != nil {
 		return err
 	}
 	time.Sleep(3 * time.Millisecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tPP]
