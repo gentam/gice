@@ -4,6 +4,8 @@ import (
 	"flag"
 	"io"
 	"os"
+
+	"github.com/gentam/gice"
 )
 
 func writeCommand(args []string) {
@@ -30,7 +32,7 @@ func writeCommand(args []string) {
 		defer input.Close()
 	}
 
-	d, err := NewDevice()
+	d, err := gice.NewDevice()
 	if err != nil {
 		fatalf("%v", err)
 	}
@@ -44,7 +46,7 @@ func writeCommand(args []string) {
 	defer d.FlashPowerDown()
 
 	if bulkErase {
-		if err := d.flashBulkErase(); err != nil {
+		if err := d.FlashBulkErase(); err != nil {
 			fatalf("bulk erase flash failed: %v", err)
 		}
 	}
