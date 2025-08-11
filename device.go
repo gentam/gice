@@ -17,7 +17,7 @@ type Device struct {
 	Flash *Flash
 
 	cs    gpio.PinIO // ADBUS4 Chip Select
-	crest gpio.PinIO // ADBUS7 Reset
+	reset gpio.PinIO // ADBUS7 Reset
 	cdone gpio.PinIO // ADBUS6 Done
 
 	clock physic.Frequency
@@ -49,7 +49,7 @@ func NewDevice() (*Device, error) {
 	// ADBUS6 | iCE_CDONE
 	// ADBUS7 | iCE_CRESET / iCE_RESET
 	d.cs = d.FTDI.D4
-	d.crest = d.FTDI.D7
+	d.reset = d.FTDI.D7
 	d.cdone = d.FTDI.D6
 
 	if err := d.connectSPI(); err != nil {
@@ -63,7 +63,7 @@ func NewDevice() (*Device, error) {
 
 // ResetFPGA asserts (low) or deasserts (high) the FPGA reset line.
 func (d *Device) ResetFPGA(l gpio.Level) error {
-	return d.crest.Out(l)
+	return d.reset.Out(l)
 }
 
 func (d *Device) findFT2232H() error {
