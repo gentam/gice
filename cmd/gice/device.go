@@ -15,8 +15,10 @@ import (
 )
 
 type Device struct {
-	ft *ftdi.FT232H
-	cs gpio.PinIO
+	ft    *ftdi.FT232H
+	cs    gpio.PinIO // ADBUS4 Chip Select
+	crest gpio.PinIO // ADBUS7 Reset
+	cdone gpio.PinIO // ADBUS6 Done
 
 	clock physic.Frequency
 	conn  spi.Conn
@@ -24,7 +26,7 @@ type Device struct {
 
 var hostInitialized atomic.Bool
 
-// NewDevice opens FT2232H and initializes SPI connection.
+// NewDevice finds FT2232H device and opens MPSSE/SPI connection.
 func NewDevice() (*Device, error) {
 	if hostInitialized.CompareAndSwap(false, true) {
 		if _, err := host.Init(); err != nil {
@@ -33,22 +35,22 @@ func NewDevice() (*Device, error) {
 	}
 
 	d := &Device{
-		// [AS_135 3.2.1 Divisors] specifies range in [92Hz, 30MHz], but
-		// periph.io's minimum is 100Hz
-		clock: 30 * physic.MegaHertz,
+		clock: 30 * physic.MegaHertz, // [AN_135 3.2.1 Divisors]
 	}
 	if err := d.openFT2232H(); err != nil {
 		return nil, err
 	}
 
-	// [EB82|Appendix A. Sheet 2 of 5 (USB to SPI/RS232)]
-	// ADBUS0 | 16 | iCE_SCK
-	// ADBUS1 | 17 | iCE_SI
-	// ADBUS2 | 18 | iCE_SO
-	// ADBUS4 | 21 | iCE_SS_B (CS)
-	// ADBUS6 | 23 | iCE_CDONE
-	// ADBUS7 | 24 | iCE_RESET
-	d.cs = d.ft.D4 // ADBUS4 (GPIOLO → CS)
+	// [EB82|Appendix A. Sheet 2 of 5 (USB to SPI/RS232)] / [icebreaker-sch.pdf]
+	// ADBUS0 | iCE_SCK
+	// ADBUS1 | iCE_MOSI / FLASH_MOSI
+	// ADBUS2 | iCE_MISO / FLASH_MISO
+	// ADBUS4 | iCE_SS_B
+	// ADBUS6 | iCE_CDONE
+	// ADBUS7 | iCE_CRESET / iCE_RESET
+	d.cs = d.ft.D4
+	d.crest = d.ft.D7
+	d.cdone = d.ft.D6
 
 	if err := d.connectSPI(); err != nil {
 		return nil, err
@@ -102,7 +104,8 @@ func (d *Device) connectSPI() (err error) {
 		return fmt.Errorf("failed to get SPI port: %w", err)
 	}
 
-	// Mode0 and Mode3 are supported [n25q_32mb_3v_65nm.pdf|Table 7: SPI Modes]
+	// [FTDI AN_114|1.2] > FTDI device can only support mode 0 and mode 2 due to the limitation of MPSSE engine
+	// [n25q_32mb_3v_65nm.pdf|Table 7: SPI Modes] mode 0 and mode 3 are supported
 	mode := spi.Mode0
 	d.conn, err = port.Connect(d.clock, mode, 8)
 	return err
