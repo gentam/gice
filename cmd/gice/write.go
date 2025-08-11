@@ -2,26 +2,33 @@ package main
 
 import (
 	"flag"
+	"io"
 	"os"
 )
 
 func writeCommand(args []string) {
 	fs := flag.NewFlagSet("write", flag.ExitOnError)
 	var (
-		filename string
+		filename  string
+		bulkErase bool
 	)
 	fs.StringVar(&filename, "f", "", "input file")
+	fs.BoolVar(&bulkErase, "e", false, "bulk erase entire flash")
 	fs.Parse(args)
 
-	if filename == "" {
+	if filename == "" && !bulkErase {
 		fatalUsage("input file is required")
 	}
 
-	file, err := os.Open(filename)
-	if err != nil {
-		fatalf("failed to open file: %v", err)
+	var input io.ReadCloser
+	var err error
+	if filename != "" {
+		input, err = os.Open(filename)
+		if err != nil {
+			fatalf("failed to open file: %v", err)
+		}
+		defer input.Close()
 	}
-	defer file.Close()
 
 	d, err := NewDevice()
 	if err != nil {
@@ -36,7 +43,15 @@ func writeCommand(args []string) {
 	}
 	defer d.FlashPowerDown()
 
-	if err := d.WriteFlash(file); err != nil {
-		fatalf("failed to write flash: %v", err)
+	if bulkErase {
+		if err := d.flashBulkErase(); err != nil {
+			fatalf("bulk erase flash failed: %v", err)
+		}
+	}
+
+	if input != nil {
+		if err := d.WriteFlash(input); err != nil {
+			fatalf("write flash failed: %v", err)
+		}
 	}
 }
