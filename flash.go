@@ -32,7 +32,9 @@ const (
 	flashCmdRead             = 0x03
 	flashCmdWriteEnable      = 0x06
 	flashCmdPageProgram      = 0x02
-	flashCmdChipBulkErase    = 0xC7
+	flashCmdSubsectorErase   = 0x20 // Sector Erase (4KB)
+	flashCmdSectorErase      = 0xD8 // Block Erase (64KB)
+	flashCmdBulkErase        = 0xC7 // Chip Erase
 )
 
 var knownFlashIDs = map[[3]byte]string{
@@ -115,7 +117,7 @@ func (f *Flash) Read(addr, n int) ([]byte, error) {
 		buf[1] = byte(addr >> 16)
 		buf[2] = byte(addr >> 8)
 		buf[3] = byte(addr)
-		// tx[4:] dummy bytes
+		// buf[4:] dummy bytes
 
 		if err := f.exec(func() error {
 			return f.conn.Tx(buf, buf)
@@ -188,19 +190,101 @@ func (f *Flash) Write(r io.Reader) error {
 	return nil
 }
 
-func (f *Flash) BulkErase() error {
+// SubsectorErase erases a 4KB subsector.
+func (f *Flash) SubsectorErase(addr int) error {
 	if err := f.writeEnable(); err != nil {
 		return err
 	}
 
-	buf := []byte{flashCmdChipBulkErase}
+	buf := make([]byte, 4)
+	buf[0] = flashCmdSubsectorErase
+	buf[1] = byte(addr >> 16)
+	buf[2] = byte(addr >> 8)
+	buf[3] = byte(addr)
+
 	if err := f.exec(func() error {
 		return f.conn.Tx(buf, buf)
 	}); err != nil {
 		return err
 	}
+
+	// [n25q_32mb_3v_65nm.pdf|Table 38: AC Characteristics and Operating Conditions: tSSE] 0.8s
+	// [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tSE (4KB)] 400ms
+	time.Sleep(800 * time.Millisecond)
+	return nil
+}
+
+// SectorErase erases a 64KB sector.
+func (f *Flash) SectorErase(addr int) error {
+	if err := f.writeEnable(); err != nil {
+		return err
+	}
+
+	buf := make([]byte, 4)
+	buf[0] = flashCmdSectorErase
+	buf[1] = byte(addr >> 16)
+	buf[2] = byte(addr >> 8)
+	buf[3] = byte(addr)
+
+	if err := f.exec(func() error {
+		return f.conn.Tx(buf, buf)
+	}); err != nil {
+		return err
+	}
+
+	// [n25q_32mb_3v_65nm.pdf|Table 38: AC Characteristics and Operating Conditions: tSE] 3s
+	// [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tBE2 (64KB)] 2000ms
+	time.Sleep(3 * time.Second)
+	return nil
+}
+
+// BulkErase erases the entire flash chip.
+func (f *Flash) BulkErase() error {
+	if err := f.writeEnable(); err != nil {
+		return err
+	}
+
+	buf := []byte{flashCmdBulkErase}
+	if err := f.exec(func() error {
+		return f.conn.Tx(buf, buf)
+	}); err != nil {
+		return err
+	}
+
 	// [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tCE]> 200s
 	// [n25q_32mb_3v_65nm.pdf|Table 38: AC Characteristics and Operating Conditions: tBE]> 60s
 	time.Sleep(200 * time.Second) // TODO: check status register to return early?
+	return nil
+}
+
+// Erase erases the size bytes starting from baseAddr by repeatedly calling
+// SectorErase and SubsectorErase.
+func (f *Flash) Erase(baseAddr, size int) error {
+	const (
+		sectorSize    = 64 << 10 // 64KB
+		subsectorSize = 4 << 10  // 4KB
+	)
+
+	remaining := size
+	addr := baseAddr
+
+	// Use 64KB sectors for as much as possible
+	for remaining >= sectorSize {
+		if err := f.SectorErase(addr); err != nil {
+			return err
+		}
+		addr += sectorSize
+		remaining -= sectorSize
+	}
+
+	// Use 4KB subsectors for the rest
+	for remaining > 0 {
+		if err := f.SubsectorErase(addr); err != nil {
+			return err
+		}
+		addr += subsectorSize
+		remaining -= subsectorSize
+	}
+
 	return nil
 }

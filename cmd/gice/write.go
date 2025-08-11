@@ -49,6 +49,14 @@ func writeCommand(args []string) {
 		if err := d.Flash.BulkErase(); err != nil {
 			fatalf("bulk erase flash failed: %v", err)
 		}
+	} else {
+		stat, err := input.(*os.File).Stat()
+		if err != nil {
+			fatalf("failed to get file size: %v", err)
+		}
+		if err := d.Flash.Erase(0, int(stat.Size())); err != nil {
+			fatalf("erase failed: %v", err)
+		}
 	}
 
 	if input != nil {

@@ -22,7 +22,7 @@ func usage() {
 
 Commands:
 	read	 read flash memory
-	write	 write flash memory
+	write	 write/erase flash memory
 	info	 print device information
 `)
 	os.Exit(2)
