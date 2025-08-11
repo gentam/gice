@@ -21,7 +21,7 @@ func readCommand(args []string) {
 
 	d, err := NewDevice()
 	if err != nil {
-		fatalf("failed create device: %v", err)
+		fatalf("%v", err)
 	}
 
 	if err := d.ReleasePowerDown(); err != nil {
