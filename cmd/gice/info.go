@@ -9,7 +9,7 @@ import (
 func infoCommand() {
 	dev, err := NewDevice()
 	if err != nil {
-		fatalf("failed create device: %v", err)
+		fatalf("%v", err)
 	}
 	d := dev.ft
 
