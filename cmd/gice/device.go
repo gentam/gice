@@ -59,6 +59,11 @@ func NewDevice() (*Device, error) {
 	return d, nil
 }
 
+// ResetFPGA asserts (low) or deasserts (high) the FPGA reset line.
+func (d *Device) ResetFPGA(l gpio.Level) error {
+	return d.crest.Out(l)
+}
+
 // flashExec wraps SPI transactions with CS assertion.
 func (d *Device) flashExec(tx func() error) (err error) {
 	if err = d.cs.Out(gpio.Low); err != nil {

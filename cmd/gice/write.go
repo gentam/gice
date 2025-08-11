@@ -28,6 +28,9 @@ func writeCommand(args []string) {
 		fatalf("%v", err)
 	}
 
+	d.ResetFPGA(false) // prevent FPGA from acting as a SPI master
+	defer d.ResetFPGA(true)
+
 	if err := d.FlashPowerUp(); err != nil {
 		fatalf("flash power up failed: %v", err)
 	}
