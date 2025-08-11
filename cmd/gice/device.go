@@ -222,6 +222,10 @@ func (d *Device) writeEnable() error {
 // addr: 24 bit
 // data: max 256 bytes
 func (d *Device) programFlash(addr int, data []byte) error {
+	if err := d.writeEnable(); err != nil {
+		return err
+	}
+
 	const max24 = 1<<24 - 1 // 0xFFFFFF
 	if addr < 0 || addr > max24 {
 		return fmt.Errorf("address 0x%X out of 24-bit range", addr)
@@ -249,10 +253,6 @@ func (d *Device) WriteFlash(r io.Reader) error {
 	buf := [256]byte{}
 	addr := 0
 	for {
-		if err := d.writeEnable(); err != nil {
-			return err
-		}
-
 		n, err := r.Read(buf[:])
 		if err != nil && err != io.EOF {
 			return err
