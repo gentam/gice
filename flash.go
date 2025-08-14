@@ -49,8 +49,8 @@ func (f *Flash) IsKnown(id [3]byte) (string, bool) {
 	return "", false
 }
 
-// exec wraps SPI transactions with CS assertion.
-func (f *Flash) exec(tx func() error) (err error) {
+// tx wraps SPI transaction with CS assertion.
+func (f *Flash) tx(buf []byte) (err error) {
 	if err = f.cs.Out(gpio.Low); err != nil {
 		return err
 	}
@@ -59,15 +59,13 @@ func (f *Flash) exec(tx func() error) (err error) {
 			err = csErr
 		}
 	}()
-	err = tx()
+	err = f.conn.Tx(buf, buf)
 	return
 }
 
 func (f *Flash) PowerUp() error {
 	buf := []byte{flashCmdReleasePowerDown}
-	if err := f.exec(func() error {
-		return f.conn.Tx(buf, buf)
-	}); err != nil {
+	if err := f.tx(buf); err != nil {
 		return err
 	}
 	time.Sleep(3 * time.Microsecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tRES1]
@@ -76,9 +74,7 @@ func (f *Flash) PowerUp() error {
 
 func (f *Flash) PowerDown() error {
 	buf := []byte{flashCmdPowerDown}
-	if err := f.exec(func() error {
-		return f.conn.Tx(buf, buf)
-	}); err != nil {
+	if err := f.tx(buf); err != nil {
 		return err
 	}
 	time.Sleep(3 * time.Microsecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tDP]
@@ -91,9 +87,7 @@ func (f *Flash) ReadID() (id [3]byte, err error) {
 	buf := make([]byte, 4)
 	buf[0] = flashCmdReadID
 
-	if err = f.exec(func() error {
-		return f.conn.Tx(buf, buf)
-	}); err != nil {
+	if err = f.tx(buf); err != nil {
 		return
 	}
 	return [3]byte(buf[1:]), err
@@ -119,9 +113,7 @@ func (f *Flash) Read(addr, n int) ([]byte, error) {
 		buf[3] = byte(addr)
 		// buf[4:] dummy bytes
 
-		if err := f.exec(func() error {
-			return f.conn.Tx(buf, buf)
-		}); err != nil {
+		if err := f.tx(buf); err != nil {
 			return nil, err
 		}
 
@@ -136,9 +128,7 @@ func (f *Flash) Read(addr, n int) ([]byte, error) {
 
 func (f *Flash) writeEnable() error {
 	buf := []byte{flashCmdWriteEnable}
-	return f.exec(func() error {
-		return f.conn.Tx(buf, buf)
-	})
+	return f.tx(buf)
 }
 
 // addr: 24 bit
@@ -162,9 +152,7 @@ func (f *Flash) program(addr int, data []byte) error {
 	buf[3] = byte(addr)
 	copy(buf[4:], data)
 
-	if err := f.exec(func() error {
-		return f.conn.Tx(buf, buf)
-	}); err != nil {
+	if err := f.tx(buf); err != nil {
 		return err
 	}
 	time.Sleep(3 * time.Millisecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tPP]
@@ -202,9 +190,7 @@ func (f *Flash) SubsectorErase(addr int) error {
 	buf[2] = byte(addr >> 8)
 	buf[3] = byte(addr)
 
-	if err := f.exec(func() error {
-		return f.conn.Tx(buf, buf)
-	}); err != nil {
+	if err := f.tx(buf); err != nil {
 		return err
 	}
 
@@ -226,9 +212,7 @@ func (f *Flash) SectorErase(addr int) error {
 	buf[2] = byte(addr >> 8)
 	buf[3] = byte(addr)
 
-	if err := f.exec(func() error {
-		return f.conn.Tx(buf, buf)
-	}); err != nil {
+	if err := f.tx(buf); err != nil {
 		return err
 	}
 
@@ -245,9 +229,7 @@ func (f *Flash) BulkErase() error {
 	}
 
 	buf := []byte{flashCmdBulkErase}
-	if err := f.exec(func() error {
-		return f.conn.Tx(buf, buf)
-	}); err != nil {
+	if err := f.tx(buf); err != nil {
 		return err
 	}
 
