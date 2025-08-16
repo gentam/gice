@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"periph.io/x/conn/v3/gpio"
@@ -26,15 +27,16 @@ func NewFlash(d *Device) *Flash {
 //   - [N25Q32|Table 16: Command Set]
 //   - [W25Q128|8.1.2 Instruction Set Table 1]
 const (
-	flashCmdReleasePowerDown = 0xAB
-	flashCmdPowerDown        = 0xB9
-	flashCmdReadID           = 0x9F
-	flashCmdRead             = 0x03
-	flashCmdWriteEnable      = 0x06
-	flashCmdPageProgram      = 0x02
-	flashCmdSubsectorErase   = 0x20 // Sector Erase (4KB)
-	flashCmdSectorErase      = 0xD8 // Block Erase (64KB)
-	flashCmdBulkErase        = 0xC7 // Chip Erase
+	flashCmdReleasePowerDown   = 0xAB
+	flashCmdPowerDown          = 0xB9
+	flashCmdReadID             = 0x9F
+	flashCmdRead               = 0x03
+	flashCmdWriteEnable        = 0x06
+	flashCmdPageProgram        = 0x02
+	flashCmdSubsectorErase     = 0x20 // Sector Erase (4KB)
+	flashCmdSectorErase        = 0xD8 // Block Erase (64KB)
+	flashCmdBulkErase          = 0xC7 // Chip Erase
+	flashCmdReadStatusRegister = 0x05
 )
 
 var knownFlashIDs = map[[3]byte]string{
@@ -269,4 +271,66 @@ func (f *Flash) Erase(baseAddr, size int) error {
 	}
 
 	return nil
+}
+
+// StatusRegister represents the status register of the flash chip.
+//
+//	Bits| [N25Q32|Table 9]                     | [W25Q128|7.1 Status Registers]
+//	----+--------------------------------------+-------------------------------
+//	7   | Status register write enable/disable | SRP: Status Register Protect
+//	6   | Reserved                             | SEC: Sector protect
+//	5   | Top/bottom                           | TB: Top/Bottom protect
+//	4:2 | Block protect 2-0                    | BP2-0: Block Protect bit 2-0
+//	1   | Write enable latch                   | WEL: Write Enable Latch
+//	0   | Write in progress                    | BUSY: Erase/Write in progress
+type StatusRegister byte
+
+func (sr StatusRegister) StatusRegisterProtect() bool { return sr&(1<<7) != 0 }
+func (sr StatusRegister) SectorProtect() bool         { return sr&(1<<6) != 0 }
+func (sr StatusRegister) TopBottom() bool             { return sr&(1<<5) != 0 }
+func (sr StatusRegister) BlockProtect2() bool         { return sr&(1<<4) != 0 }
+func (sr StatusRegister) BlockProtect1() bool         { return sr&(1<<3) != 0 }
+func (sr StatusRegister) BlockProtect0() bool         { return sr&(1<<2) != 0 }
+func (sr StatusRegister) WriteEnabled() bool          { return sr&(1<<1) != 0 }
+func (sr StatusRegister) Busy() bool                  { return sr&(1<<0) != 0 }
+
+func (sr StatusRegister) String() string {
+	b := fmt.Sprintf("%08b", byte(sr))
+	s := []string{}
+	if sr.StatusRegisterProtect() {
+		s = append(s, "SRP")
+	}
+	if sr.SectorProtect() {
+		s = append(s, "SEC")
+	}
+	if sr.TopBottom() {
+		s = append(s, "TB")
+	}
+	if sr.BlockProtect2() {
+		s = append(s, "BP2")
+	}
+	if sr.BlockProtect1() {
+		s = append(s, "BP1")
+	}
+	if sr.BlockProtect0() {
+		s = append(s, "BP0")
+	}
+	if sr.WriteEnabled() {
+		s = append(s, "WEL")
+	}
+	if sr.Busy() {
+		s = append(s, "BUSY")
+	}
+	if len(s) == 0 {
+		return b
+	}
+	return b + " " + strings.Join(s, ";")
+}
+
+func (f *Flash) ReadStatusRegister() (StatusRegister, error) {
+	buf := []byte{flashCmdReadStatusRegister, 0}
+	if err := f.tx(buf); err != nil {
+		return 0, err
+	}
+	return StatusRegister(buf[1]), nil
 }
