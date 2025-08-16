@@ -22,9 +22,9 @@ func NewFlash(d *Device) *Flash {
 	}
 }
 
-// Flash commands supported by both Micron N25Q032 and Winbond W25Q128JVIM devices.
-//   - Micron [n25q_32mb_3v_65nm.pdf|Table 16: Command Set]
-//   - Winbond [W25Q128JV-DTR|8.1.2 Instruction Set Table 1]
+// Flash commands supported by both Micron N25Q032 and Winbond W25Q128JVI.
+//   - [N25Q32|Table 16: Command Set]
+//   - [W25Q128|8.1.2 Instruction Set Table 1]
 const (
 	flashCmdReleasePowerDown = 0xAB
 	flashCmdPowerDown        = 0xB9
@@ -38,8 +38,8 @@ const (
 )
 
 var knownFlashIDs = map[[3]byte]string{
-	{0x20, 0xBA, 0x16}: "Micron N25Q032",
-	{0xEF, 0x70, 0x18}: "Winbond W25Q128JVIM",
+	{0x20, 0xBA, 0x16}: "Micron N25Q 32Mb",
+	{0xEF, 0x70, 0x18}: "Winbond W25Q 128Mb",
 }
 
 func (f *Flash) IsKnown(id [3]byte) (string, bool) {
@@ -68,7 +68,7 @@ func (f *Flash) PowerUp() error {
 	if err := f.tx(buf); err != nil {
 		return err
 	}
-	time.Sleep(3 * time.Microsecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tRES1]
+	time.Sleep(3 * time.Microsecond) // [W25Q128|9.6 AC Electrical Characteristics] tRES1
 	return nil
 }
 
@@ -77,7 +77,7 @@ func (f *Flash) PowerDown() error {
 	if err := f.tx(buf); err != nil {
 		return err
 	}
-	time.Sleep(3 * time.Microsecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tDP]
+	time.Sleep(3 * time.Microsecond) // [W25Q128|9.6 AC Electrical Characteristics] tDP
 	return nil
 }
 
@@ -155,7 +155,7 @@ func (f *Flash) program(addr int, data []byte) error {
 	if err := f.tx(buf); err != nil {
 		return err
 	}
-	time.Sleep(3 * time.Millisecond) // [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tPP]
+	time.Sleep(3 * time.Millisecond) // [W25Q128|9.6 AC Electrical Characteristics] tPP
 	return nil
 }
 
@@ -194,8 +194,8 @@ func (f *Flash) SubsectorErase(addr int) error {
 		return err
 	}
 
-	// [n25q_32mb_3v_65nm.pdf|Table 38: AC Characteristics and Operating Conditions: tSSE] 0.8s
-	// [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tSE (4KB)] 400ms
+	// [N25Q32|Table 38: AC Characteristics and Operating Conditions] tSSE: 0.8s
+	// [W25Q128|9.6 AC Electrical Characteristics] tSE (4KB): 400ms
 	time.Sleep(800 * time.Millisecond)
 	return nil
 }
@@ -216,8 +216,8 @@ func (f *Flash) SectorErase(addr int) error {
 		return err
 	}
 
-	// [n25q_32mb_3v_65nm.pdf|Table 38: AC Characteristics and Operating Conditions: tSE] 3s
-	// [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tBE2 (64KB)] 2000ms
+	// [N25Q32|Table 38: AC Characteristics and Operating Conditions] tSE: 3s
+	// [W25Q128|9.6 AC Electrical Characteristics] tBE2 (64KB): 2000ms
 	time.Sleep(3 * time.Second)
 	return nil
 }
@@ -233,8 +233,8 @@ func (f *Flash) BulkErase() error {
 		return err
 	}
 
-	// [W25Q128JV-DTR|9.6 AC Electrical Characteristics: tCE]> 200s
-	// [n25q_32mb_3v_65nm.pdf|Table 38: AC Characteristics and Operating Conditions: tBE]> 60s
+	// [N25Q32|Table 38: AC Characteristics and Operating Conditions] tBE: 60s
+	// [W25Q128|9.6 AC Electrical Characteristics] tCE: 200s
 	time.Sleep(200 * time.Second) // TODO: check status register to return early?
 	return nil
 }

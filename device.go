@@ -35,13 +35,13 @@ func NewDevice() (*Device, error) {
 	}
 
 	d := &Device{
-		clock: 30 * physic.MegaHertz, // [AN_135 3.2.1 Divisors]
+		clock: 30 * physic.MegaHertz, // [FTDI-AN_135|3.2.1 Divisors]
 	}
 	if err := d.findFT2232H(); err != nil {
 		return nil, err
 	}
 
-	// [EB82|Appendix A. Sheet 2 of 5 (USB to SPI/RS232)] / [icebreaker-sch.pdf]
+	// [Lattice-EB82|Appendix A. Sheet 2 of 5 (USB to SPI/RS232)] / [iCEBreaker]
 	// ADBUS0 | iCE_SCK
 	// ADBUS1 | iCE_MOSI / FLASH_MOSI
 	// ADBUS2 | iCE_MISO / FLASH_MISO
@@ -97,8 +97,8 @@ func (d *Device) connectSPI() error {
 		return fmt.Errorf("failed to get SPI port: %w", err)
 	}
 
-	// [FTDI AN_114|1.2]> FTDI device can only support mode 0 and mode 2 due to the limitation of MPSSE engine
-	// [n25q_32mb_3v_65nm.pdf|Table 7: SPI Modes] mode 0 and mode 3 are supported
+	// [FTDI-AN_114|1.2]> FTDI device can only support mode 0 and mode 2 due to the limitation of MPSSE engine
+	// [N25Q32|Table 7: SPI Modes] mode 0 and mode 3 are supported
 	mode := spi.Mode0
 	d.conn, err = port.Connect(d.clock, mode, 8)
 	return err
