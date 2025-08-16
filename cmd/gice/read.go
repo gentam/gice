@@ -12,12 +12,14 @@ import (
 func readCommand(args []string) {
 	fs := flag.NewFlagSet("read", flag.ExitOnError)
 	var (
-		nread   int
-		idOnly  bool
-		outFile string
+		nread      int
+		idOnly     bool
+		statusOnly bool
+		outFile    string
 	)
 	fs.IntVar(&nread, "n", 256, "number of bytes to read")
-	fs.BoolVar(&idOnly, "id", false, "only print flash ID and exit")
+	fs.BoolVar(&idOnly, "id", false, "just print flash ID")
+	fs.BoolVar(&statusOnly, "s", false, "just print flash status register")
 	fs.StringVar(&outFile, "o", "", "output file (default: hexdump)")
 	fs.Parse(args)
 
@@ -33,6 +35,15 @@ func readCommand(args []string) {
 		fatalf("flash power up failed: %v", err)
 	}
 	defer d.Flash.PowerDown()
+
+	if statusOnly {
+		sr, err := d.Flash.ReadStatusRegister()
+		if err != nil {
+			fatalf("read flash status register failed: %v", err)
+		}
+		fmt.Println(sr)
+		return
+	}
 
 	flashID, err := d.Flash.ReadID()
 	if err != nil {
