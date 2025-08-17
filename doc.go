@@ -11,6 +11,6 @@
 //   - [iCEBreaker]: iCEBreaker FPGA (https://github.com/icebreaker-fpga/icebreaker/blob/master/hardware/v1.0e/icebreaker-sch.pdf)
 //
 // SPI Flash
-//   - [N25Q32]: N25Q032A Micron Serial NOR Flash Memory datasheet
+//   - [N25Q32]: N25Q032A Micron Serial NOR Flash Memory datasheet (could not find the official public URL)
 //   - [W25Q128]: W25Q128JV-DTR Winbond Serial Flash Memory (https://www.winbond.com/resource-files/W25Q128JV_DTR%20RevD%2012232024%20Plus.pdf)
 package gice
