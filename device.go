@@ -47,12 +47,15 @@ func NewDevice() (*Device, error) {
 	// ADBUS2 | iCE_MISO / FLASH_MISO
 	// ADBUS4 | iCE_SS_B
 	// ADBUS6 | iCE_CDONE
-	// ADBUS7 | iCE_CRESET / iCE_RESET
+	// ADBUS7 | iCE_CREST / iCE_RESET
 	d.cs = d.FTDI.D4
 	d.reset = d.FTDI.D7
 	d.cdone = d.FTDI.D6
 
-	if err := d.connectSPI(); err != nil {
+	// [FTDI-AN_114|1.2]> FTDI device can only support mode 0 and mode 2 due to the limitation of MPSSE engine
+	// [N25Q32|Table 7: SPI Modes] mode 0 and mode 3 are supported
+	mode := spi.Mode0
+	if err := d.connectSPI(mode); err != nil {
 		return nil, err
 	}
 
@@ -87,7 +90,7 @@ func (d *Device) findFT2232H() error {
 	return errors.New("FT2232H device not found")
 }
 
-func (d *Device) connectSPI() error {
+func (d *Device) connectSPI(mode spi.Mode) error {
 	if d.FTDI == nil {
 		return errors.New("FT2232H device not found")
 	}
@@ -97,9 +100,6 @@ func (d *Device) connectSPI() error {
 		return fmt.Errorf("failed to get SPI port: %w", err)
 	}
 
-	// [FTDI-AN_114|1.2]> FTDI device can only support mode 0 and mode 2 due to the limitation of MPSSE engine
-	// [N25Q32|Table 7: SPI Modes] mode 0 and mode 3 are supported
-	mode := spi.Mode0
 	d.conn, err = port.Connect(d.clock, mode, 8)
 	return err
 }
