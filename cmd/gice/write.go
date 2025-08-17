@@ -44,8 +44,8 @@ func writeCommand(args []string) {
 	defer d.Flash.PowerDown()
 
 	if bulkErase {
-		if err := d.Flash.BulkErase(); err != nil {
-			fatalf("bulk erase flash failed: %v", err)
+		if err := d.Flash.EraseChip(); err != nil {
+			fatalf("erase chip failed: %v", err)
 		}
 	} else {
 		stat, err := file.Stat()
@@ -53,7 +53,7 @@ func writeCommand(args []string) {
 			fatalf("failed to get file size: %v", err)
 		}
 		if err := d.Flash.Erase(0, int(stat.Size())); err != nil {
-			fatalf("erase failed: %v", err)
+			fatalf("erase flash failed: %v", err)
 		}
 	}
 
