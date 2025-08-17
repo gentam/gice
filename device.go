@@ -64,10 +64,11 @@ func NewDevice() (*Device, error) {
 	return d, nil
 }
 
-// ResetFPGA asserts (low) or deasserts (high) the FPGA reset line.
-func (d *Device) ResetFPGA(l gpio.Level) error {
-	return d.reset.Out(l)
-}
+// HoldFPGAReset asserts (low) the FPGA reset line.
+func (d *Device) HoldFPGAReset() error { return d.reset.Out(gpio.Low) }
+
+// ReleaseFPGAReset deasserts (high) the FPGA reset line.
+func (d *Device) ReleaseFPGAReset() error { return d.reset.Out(gpio.High) }
 
 func (d *Device) findFT2232H() error {
 	const (

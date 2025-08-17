@@ -21,7 +21,7 @@ func usage() {
 	gice <command> [arguments]
 
 Commands:
-	read [-id] [-n size] [-o file]
+	read [-id] [-n size] [-o file] [-s]
 		read flash memory
 
 	write [-e] <file>
