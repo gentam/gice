@@ -43,6 +43,10 @@ func writeCommand(args []string) {
 	}
 	defer d.Flash.PowerDown()
 
+	if err := d.Flash.LoadParams(); err != nil {
+		fatalf("failed to load flash parameters: %v", err)
+	}
+
 	if bulkErase {
 		if err := d.Flash.EraseChip(); err != nil {
 			fatalf("erase chip failed: %v", err)
