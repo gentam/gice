@@ -41,13 +41,6 @@ const (
 	flashCmdReadStatusRegister = 0x05
 )
 
-func (f *Flash) IsKnown(id [3]byte) (string, bool) {
-	if flash, ok := knownFlash[id]; ok {
-		return flash.name, true
-	}
-	return "", false
-}
-
 // tx wraps SPI transaction with CS assertion.
 func (f *Flash) tx(buf []byte) (err error) {
 	if err = f.cs.Out(gpio.Low); err != nil {
@@ -80,43 +73,29 @@ func (f *Flash) PowerDown() error {
 	return nil
 }
 
-// ReadID reads the JEDEC ID from the flash chip.
-// Extended device string is ignored.
-func (f *Flash) ReadID() (id [3]byte, err error) {
+// ReadID returns the JEDEC ID of the flash chip and configures its parameters.
+// It returns a non-empty name for known IDs. The extended device string is ignored.
+func (f *Flash) ReadID() (id [3]byte, name string, err error) {
 	buf := make([]byte, 4)
 	buf[0] = flashCmdReadID
 
 	if err = f.tx(buf); err != nil {
 		return
 	}
+
 	f.id = [3]byte(buf[1:])
-	f.loadParams()
-	return f.id, err
-}
-
-func (f *Flash) loadParams() bool {
-	flash, ok := knownFlash[f.id]
-	if ok {
-		f.pr = &flash
+	if params, ok := knownFlash[f.id]; ok {
+		f.pr = &params
+		name = params.name
 	}
-	return ok
+	return f.id, name, err
 }
 
-func (f *Flash) LoadParams() error {
-	if f.id == [3]byte{} {
-		if _, err := f.ReadID(); err != nil {
-			return err
-		}
-	}
-	f.loadParams()
-	return nil
-}
-
-// Read splits the read operation into multiple transactions to avoid exceeding
-// the maximum transaction size.
+// Read performs a read operation, splitting it into multiple transactions if needed
+// to stay within the maximum transaction size.
 func (f *Flash) Read(addr, n int) ([]byte, error) {
 	const (
-		maxTx    = 65536 // [AN_108]
+		maxTx    = 65536 // [FTDI-AN_108]
 		cmdBytes = 4     // opRead + 24‑bit address
 		maxData  = maxTx - cmdBytes
 	)

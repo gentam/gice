@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/gentam/gice"
@@ -43,8 +44,12 @@ func writeCommand(args []string) {
 	}
 	defer d.Flash.PowerDown()
 
-	if err := d.Flash.LoadParams(); err != nil {
-		fatalf("failed to load flash parameters: %v", err)
+	flashID, name, err := d.Flash.ReadID()
+	if err != nil {
+		fatalf("read flash ID failed: %v", err)
+	}
+	if name == "" {
+		fmt.Fprintf(os.Stderr, "unknown flash ID (%X)\n", flashID)
 	}
 
 	if bulkErase {
