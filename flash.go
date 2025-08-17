@@ -273,7 +273,7 @@ func (f *Flash) BusyWait(interval, timeout time.Duration) error {
 	for {
 		select {
 		case <-timer.C:
-			return nil
+			return nil // assume ready
 		case <-ticker.C:
 			sr, err := f.ReadStatusRegister()
 			if err != nil {
