@@ -45,16 +45,15 @@ func readCommand(args []string) {
 		return
 	}
 
-	flashID, err := d.Flash.ReadID()
+	flashID, name, err := d.Flash.ReadID()
 	if err != nil {
 		fatalf("read flash ID failed: %v", err)
 	}
-	name, known := d.Flash.IsKnown(flashID)
 	if idOnly {
 		fmt.Printf("%X\t%s\n", flashID, name)
 		return
 	}
-	if !known {
+	if name == "" {
 		fmt.Fprintf(os.Stderr, "unknown flash ID (%X)\n", flashID)
 	}
 
