@@ -14,6 +14,19 @@ import (
 type Flash struct {
 	conn spi.Conn
 	cs   gpio.PinIO
+	id   [3]byte // JEDEC ID of the flash chip
+	pr   flashParams
+}
+
+type flashParams struct {
+	name string
+
+	tRES1      time.Duration
+	tDP        time.Duration
+	tPP        time.Duration
+	tErase4KB  time.Duration
+	tErase64KB time.Duration
+	tEraseChip time.Duration
 }
 
 func NewFlash(d *Device) *Flash {
@@ -23,30 +36,64 @@ func NewFlash(d *Device) *Flash {
 	}
 }
 
-// Flash commands supported by both Micron N25Q032 and Winbond W25Q128JVI.
+var (
+	flashIDMicronN25Q32   = [3]byte{0x20, 0xBA, 0x16}
+	flashIDWinbondW25Q128 = [3]byte{0xEF, 0x70, 0x18}
+)
+
+var knownFlash = map[[3]byte]flashParams{
+	flashIDMicronN25Q32: {
+		name: "Micron N25Q 32Mb",
+
+		// [N25Q32|Table 38: AC Characteristics and Operating Conditions]
+		// tPP: PAGE PROGRAM cycle time (256 bytes)
+		tPP: time.Duration(5 * time.Millisecond),
+		// tSSE: Subsector ERASE cycle time
+		tErase4KB: time.Duration(800 * time.Millisecond),
+		// tSE: Sector ERASE cycle time
+		tErase64KB: time.Duration(3 * time.Second),
+		// tBE: Bulk ERASE cycle time
+		tEraseChip: time.Duration(60 * time.Second),
+	},
+
+	flashIDWinbondW25Q128: {
+		name: "Winbond W25Q 128Mb",
+
+		// [W25Q128|9.6 AC Electrical Characteristics]:
+		// tRES1: /CS High to Standby Mode without ID Read
+		tRES1: time.Duration(3 * time.Microsecond),
+		// tDP: /CS High to Power-down Mode
+		tDP: time.Duration(3 * time.Microsecond),
+		// tPP: Page Program Time
+		tPP: time.Duration(3 * time.Millisecond),
+		// tSE: Sector Erase Time (4KB)
+		tErase4KB: time.Duration(400 * time.Millisecond),
+		// tBE2: Block Erase Time (64KB)
+		tErase64KB: time.Duration(2000 * time.Millisecond),
+		// tCE: Chip Erase Time
+		tEraseChip: time.Duration(200 * time.Second),
+	},
+}
+
+// Flash commands:
 //   - [N25Q32|Table 16: Command Set]
 //   - [W25Q128|8.1.2 Instruction Set Table 1]
 const (
-	flashCmdReleasePowerDown   = 0xAB
+	flashCmdPowerUp            = 0xAB // Release Power Down
 	flashCmdPowerDown          = 0xB9
 	flashCmdReadID             = 0x9F
 	flashCmdRead               = 0x03
 	flashCmdWriteEnable        = 0x06
 	flashCmdPageProgram        = 0x02
-	flashCmdSubsectorErase     = 0x20 // Sector Erase (4KB)
-	flashCmdSectorErase        = 0xD8 // Block Erase (64KB)
-	flashCmdBulkErase          = 0xC7 // Chip Erase
+	flashCmdErase4KB           = 0x20 // Subsector Erase / Sector Erase (4KB)
+	flashCmdErase64KB          = 0xD8 // Sector Erase / Block Erase (64KB)
+	flashCmdEraseChip          = 0xC7 // Bulk Erase / Chip Erase
 	flashCmdReadStatusRegister = 0x05
 )
 
-var knownFlashIDs = map[[3]byte]string{
-	{0x20, 0xBA, 0x16}: "Micron N25Q 32Mb",
-	{0xEF, 0x70, 0x18}: "Winbond W25Q 128Mb",
-}
-
 func (f *Flash) IsKnown(id [3]byte) (string, bool) {
-	if name, ok := knownFlashIDs[id]; ok {
-		return name, true
+	if flash, ok := knownFlash[id]; ok {
+		return flash.name, true
 	}
 	return "", false
 }
@@ -66,20 +113,22 @@ func (f *Flash) tx(buf []byte) (err error) {
 }
 
 func (f *Flash) PowerUp() error {
-	buf := []byte{flashCmdReleasePowerDown}
+	// TODO: skip if unsupported
+	buf := []byte{flashCmdPowerUp}
 	if err := f.tx(buf); err != nil {
 		return err
 	}
-	time.Sleep(3 * time.Microsecond) // [W25Q128|9.6 AC Electrical Characteristics] tRES1
+	time.Sleep(f.pr.tRES1)
 	return nil
 }
 
 func (f *Flash) PowerDown() error {
+	// TODO: skip if unsupported
 	buf := []byte{flashCmdPowerDown}
 	if err := f.tx(buf); err != nil {
 		return err
 	}
-	time.Sleep(3 * time.Microsecond) // [W25Q128|9.6 AC Electrical Characteristics] tDP
+	time.Sleep(f.pr.tDP)
 	return nil
 }
 
@@ -92,7 +141,15 @@ func (f *Flash) ReadID() (id [3]byte, err error) {
 	if err = f.tx(buf); err != nil {
 		return
 	}
-	return [3]byte(buf[1:]), err
+	f.id = [3]byte(buf[1:])
+	f.loadConfig()
+	return f.id, err
+}
+
+func (f *Flash) loadConfig() {
+	if flash, ok := knownFlash[f.id]; ok {
+		f.pr = flash
+	}
 }
 
 // Read splits the read operation into multiple transactions to avoid exceeding
@@ -135,7 +192,7 @@ func (f *Flash) writeEnable() error {
 
 // addr: 24 bit
 // data: max 256 bytes
-func (f *Flash) program(addr int, data []byte) error {
+func (f *Flash) pageProgram(addr int, data []byte) error {
 	if err := f.writeEnable(); err != nil {
 		return err
 	}
@@ -157,9 +214,7 @@ func (f *Flash) program(addr int, data []byte) error {
 	if err := f.tx(buf); err != nil {
 		return err
 	}
-	// [N25Q32|Table 38: AC Characteristics and Operating Conditions] tPP: 5ms
-	// [W25Q128|9.6 AC Electrical Characteristics] tPP: 3ms
-	return f.BusyWait(100*time.Microsecond, 5*time.Millisecond)
+	return f.BusyWait(100*time.Microsecond, f.pr.tPP)
 }
 
 func (f *Flash) Write(r io.Reader) error {
@@ -173,7 +228,7 @@ func (f *Flash) Write(r io.Reader) error {
 		if n == 0 {
 			break
 		}
-		if err := f.program(addr, buf[:n]); err != nil {
+		if err := f.pageProgram(addr, buf[:n]); err != nil {
 			return err
 		}
 		addr += n
@@ -181,14 +236,13 @@ func (f *Flash) Write(r io.Reader) error {
 	return nil
 }
 
-// SubsectorErase erases a 4KB subsector.
-func (f *Flash) SubsectorErase(addr int) error {
+func (f *Flash) Erase4KB(addr int) error {
 	if err := f.writeEnable(); err != nil {
 		return err
 	}
 
 	buf := make([]byte, 4)
-	buf[0] = flashCmdSubsectorErase
+	buf[0] = flashCmdErase4KB
 	buf[1] = byte(addr >> 16)
 	buf[2] = byte(addr >> 8)
 	buf[3] = byte(addr)
@@ -196,20 +250,17 @@ func (f *Flash) SubsectorErase(addr int) error {
 	if err := f.tx(buf); err != nil {
 		return err
 	}
-
-	// [N25Q32|Table 38: AC Characteristics and Operating Conditions] tSSE: 0.8s
-	// [W25Q128|9.6 AC Electrical Characteristics] tSE (4KB): 400ms
-	return f.BusyWait(50*time.Millisecond, 800*time.Millisecond)
+	return f.BusyWait(50*time.Millisecond, f.pr.tErase4KB)
 }
 
-// SectorErase erases a 64KB sector.
-func (f *Flash) SectorErase(addr int) error {
+// Erase64KB erases a 64KB sector.
+func (f *Flash) Erase64KB(addr int) error {
 	if err := f.writeEnable(); err != nil {
 		return err
 	}
 
 	buf := make([]byte, 4)
-	buf[0] = flashCmdSectorErase
+	buf[0] = flashCmdErase64KB
 	buf[1] = byte(addr >> 16)
 	buf[2] = byte(addr >> 8)
 	buf[3] = byte(addr)
@@ -217,30 +268,24 @@ func (f *Flash) SectorErase(addr int) error {
 	if err := f.tx(buf); err != nil {
 		return err
 	}
-
-	// [N25Q32|Table 38: AC Characteristics and Operating Conditions] tSE: 3s
-	// [W25Q128|9.6 AC Electrical Characteristics] tBE2 (64KB): 2000ms
-	return f.BusyWait(100*time.Millisecond, 3*time.Second)
+	return f.BusyWait(100*time.Millisecond, f.pr.tErase64KB)
 }
 
-// BulkErase erases the entire flash chip.
-func (f *Flash) BulkErase() error {
+// EraseChip bulk erase the entire chip.
+func (f *Flash) EraseChip() error {
 	if err := f.writeEnable(); err != nil {
 		return err
 	}
 
-	buf := []byte{flashCmdBulkErase}
+	buf := []byte{flashCmdEraseChip}
 	if err := f.tx(buf); err != nil {
 		return err
 	}
-
-	// [N25Q32|Table 38: AC Characteristics and Operating Conditions] tBE: 60s
-	// [W25Q128|9.6 AC Electrical Characteristics] tCE: 200s
-	return f.BusyWait(time.Second, 200*time.Second)
+	return f.BusyWait(time.Second, f.pr.tEraseChip)
 }
 
 // Erase erases the size bytes starting from baseAddr by repeatedly calling
-// SectorErase and SubsectorErase.
+// Erase64KB and Erase4KB.
 func (f *Flash) Erase(baseAddr, size int) error {
 	const (
 		sectorSize    = 64 << 10 // 64KB
@@ -252,7 +297,7 @@ func (f *Flash) Erase(baseAddr, size int) error {
 
 	// Use 64KB sectors for as much as possible
 	for remaining >= sectorSize {
-		if err := f.SectorErase(addr); err != nil {
+		if err := f.Erase64KB(addr); err != nil {
 			return err
 		}
 		addr += sectorSize
@@ -261,7 +306,7 @@ func (f *Flash) Erase(baseAddr, size int) error {
 
 	// Use 4KB subsectors for the rest
 	for remaining > 0 {
-		if err := f.SubsectorErase(addr); err != nil {
+		if err := f.Erase4KB(addr); err != nil {
 			return err
 		}
 		addr += subsectorSize
@@ -271,6 +316,9 @@ func (f *Flash) Erase(baseAddr, size int) error {
 	return nil
 }
 
+// BusyWait waits for the flash to become ready by polling the status register's
+// bit 0 with specified intervals, or until the timeout expires. Set timeout to
+// 0 to wait indefinitely.
 func (f *Flash) BusyWait(interval, timeout time.Duration) error {
 	// Fast path
 	if sr, err := f.ReadStatusRegister(); err == nil && !sr.Busy() {
@@ -278,9 +326,10 @@ func (f *Flash) BusyWait(interval, timeout time.Duration) error {
 	}
 
 	timer := time.NewTimer(timeout)
-	defer timer.Stop()
+	if timeout == 0 {
+		timer.Stop() // disable timer for unconfigured timeout
+	}
 	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
 
 	for {
 		select {
