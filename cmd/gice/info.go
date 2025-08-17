@@ -33,9 +33,9 @@ func infoCommand() {
 
 	h := ee.AsHeader()
 	fmt.Printf("MaxPower:        %dmA\n", h.MaxPower)
-	fmt.Printf("SelfPowered:	 %x\n", h.SelfPowered)
-	fmt.Printf("RemoteWakeup:	 %x\n", h.RemoteWakeup)
-	fmt.Printf("PullDownEnable:	 %x\n", h.PullDownEnable)
+	fmt.Printf("SelfPowered:     %x\n", h.SelfPowered)
+	fmt.Printf("RemoteWakeup:    %x\n", h.RemoteWakeup)
+	fmt.Printf("PullDownEnable:  %x\n", h.PullDownEnable)
 
 	for _, p := range ft.Header() {
 		fmt.Printf("%s: %s\n", p, p.Function())
