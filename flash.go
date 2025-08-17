@@ -159,7 +159,7 @@ func (f *Flash) program(addr int, data []byte) error {
 	}
 	// [N25Q32|Table 38: AC Characteristics and Operating Conditions] tPP: 5ms
 	// [W25Q128|9.6 AC Electrical Characteristics] tPP: 3ms
-	return f.BusyWait(5*time.Millisecond, 100*time.Millisecond)
+	return f.BusyWait(100*time.Microsecond, 5*time.Millisecond)
 }
 
 func (f *Flash) Write(r io.Reader) error {
@@ -199,7 +199,7 @@ func (f *Flash) SubsectorErase(addr int) error {
 
 	// [N25Q32|Table 38: AC Characteristics and Operating Conditions] tSSE: 0.8s
 	// [W25Q128|9.6 AC Electrical Characteristics] tSE (4KB): 400ms
-	return f.BusyWait(800*time.Millisecond, 100*time.Millisecond)
+	return f.BusyWait(50*time.Millisecond, 800*time.Millisecond)
 }
 
 // SectorErase erases a 64KB sector.
@@ -220,7 +220,7 @@ func (f *Flash) SectorErase(addr int) error {
 
 	// [N25Q32|Table 38: AC Characteristics and Operating Conditions] tSE: 3s
 	// [W25Q128|9.6 AC Electrical Characteristics] tBE2 (64KB): 2000ms
-	return f.BusyWait(3*time.Second, 100*time.Millisecond)
+	return f.BusyWait(100*time.Millisecond, 3*time.Second)
 }
 
 // BulkErase erases the entire flash chip.
@@ -236,7 +236,7 @@ func (f *Flash) BulkErase() error {
 
 	// [N25Q32|Table 38: AC Characteristics and Operating Conditions] tBE: 60s
 	// [W25Q128|9.6 AC Electrical Characteristics] tCE: 200s
-	return f.BusyWait(200*time.Second, time.Second)
+	return f.BusyWait(time.Second, 200*time.Second)
 }
 
 // Erase erases the size bytes starting from baseAddr by repeatedly calling
@@ -271,13 +271,9 @@ func (f *Flash) Erase(baseAddr, size int) error {
 	return nil
 }
 
-func (f *Flash) BusyWait(timeout, interval time.Duration) error {
+func (f *Flash) BusyWait(interval, timeout time.Duration) error {
 	// Fast path
-	sr, err := f.ReadStatusRegister()
-	if err != nil {
-		return err
-	}
-	if !sr.Busy() {
+	if sr, err := f.ReadStatusRegister(); err == nil && !sr.Busy() {
 		return nil
 	}
 
@@ -353,7 +349,7 @@ func (sr StatusRegister) String() string {
 	if len(s) == 0 {
 		return b
 	}
-	return b + " " + strings.Join(s, ";")
+	return b + " " + strings.Join(s, ",")
 }
 
 func (f *Flash) ReadStatusRegister() (StatusRegister, error) {
