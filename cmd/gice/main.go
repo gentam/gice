@@ -18,7 +18,7 @@ func fatalUsage(format string, a ...any) {
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-	gice <command> [arguments]
+	%s <command> [arguments]
 
 Commands:
 	read [-id] [-n size] [-o file] [-s]
@@ -29,7 +29,7 @@ Commands:
 
 	info
 		print device information
-`)
+`, os.Args[0])
 	os.Exit(2)
 }
 
