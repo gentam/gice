@@ -6,6 +6,9 @@ type fpgaDevice struct {
 	chipHeight int
 	cols       []int
 
+	cramWidth, cramHeight int
+	bramWidth, bramHeight int
+
 	tileKind func(x, y int) tileKind
 }
 
@@ -47,6 +50,10 @@ var knownFPGAs = map[deviceKind]*fpgaDevice{
 		kind:       ice384,
 		chipWidth:  6,
 		chipHeight: 8,
+		cramWidth:  182,
+		cramHeight: 80,
+		bramWidth:  0,
+		bramHeight: 0,
 		cols:       []int{18, 54, 54, 54, 54},
 		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 7
@@ -65,6 +72,10 @@ var knownFPGAs = map[deviceKind]*fpgaDevice{
 		kind:       ice1K,
 		chipWidth:  12,
 		chipHeight: 16,
+		cramWidth:  332,
+		cramHeight: 144,
+		bramWidth:  64,
+		bramHeight: 2 * 128,
 		cols:       []int{18, 54, 54, 42, 54, 54, 54},
 		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 13
@@ -89,6 +100,10 @@ var knownFPGAs = map[deviceKind]*fpgaDevice{
 		kind:       iceU4K,
 		chipWidth:  24,
 		chipHeight: 20,
+		cramWidth:  692,
+		cramHeight: 176,
+		bramWidth:  80,
+		bramHeight: 2 * 128,
 		cols:       []int{54, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54},
 		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 25
@@ -127,6 +142,10 @@ var knownFPGAs = map[deviceKind]*fpgaDevice{
 		kind:       iceLM4k,
 		chipWidth:  24,
 		chipHeight: 20,
+		cramWidth:  656,
+		cramHeight: 176,
+		bramWidth:  80,
+		bramHeight: 2 * 128,
 		cols:       []int{18, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54},
 		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 25
@@ -151,6 +170,10 @@ var knownFPGAs = map[deviceKind]*fpgaDevice{
 		kind:       ice5K,
 		chipWidth:  24,
 		chipHeight: 30,
+		cramWidth:  692,
+		cramHeight: 336,
+		bramWidth:  160,
+		bramHeight: 2 * 128,
 		cols:       []int{54, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54},
 		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 25
@@ -189,6 +212,10 @@ var knownFPGAs = map[deviceKind]*fpgaDevice{
 		kind:       ice8K,
 		chipWidth:  32,
 		chipHeight: 32,
+		cramWidth:  872,
+		cramHeight: 272,
+		bramWidth:  128,
+		bramHeight: 2 * 128,
 		cols:       []int{18, 54, 54, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54, 54, 54},
 		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 33
