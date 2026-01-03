@@ -40,11 +40,15 @@ func main() {
 		usage()
 	}
 
-	switch cmd := flag.Arg(0); cmd {
+	cmd := flag.Arg(0)
+	rest := flag.Args()[1:]
+	switch cmd {
 	case "read":
-		readCommand(flag.Args()[1:])
+		readCommand(rest)
 	case "write":
-		writeCommand(flag.Args()[1:])
+		writeCommand(rest)
+	case "pack":
+		packCommand(rest)
 	case "info":
 		infoCommand()
 	case "help":
