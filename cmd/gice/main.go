@@ -21,15 +21,13 @@ func usage() {
 	%s <command> [arguments]
 
 Commands:
-	read [-id] [-n size] [-o file] [-s]
-		read flash memory
+	read	read flash memory
+	write	write/erase flash memory
+	pack	pack asc file into a bitstream
+	info	print device information
 
-	write [-e] <file>
-		write/erase flash memory
-
-	info
-		print device information
-`, os.Args[0])
+Run "%s <command> -h" for more information about a command.
+`, os.Args[0], os.Args[0])
 	os.Exit(2)
 }
 
