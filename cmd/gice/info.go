@@ -23,7 +23,7 @@ func infoCommand() {
 
 	ee := ftdi.EEPROM{}
 	if err := ft.EEPROM(&ee); err != nil {
-		fatalf("failed to read EEPROM: %v", err)
+		fatalf("read EEPROM: %v", err)
 	}
 
 	fmt.Printf("Manufacturer:    %s\n", ee.Manufacturer)

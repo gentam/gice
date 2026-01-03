@@ -32,14 +32,14 @@ func readCommand(args []string) {
 	defer d.ReleaseFPGAReset()
 
 	if err := d.Flash.PowerUp(); err != nil {
-		fatalf("flash power up failed: %v", err)
+		fatalf("flash power up: %v", err)
 	}
 	defer d.Flash.PowerDown()
 
 	if statusOnly {
 		sr, err := d.Flash.ReadStatusRegister()
 		if err != nil {
-			fatalf("read flash status register failed: %v", err)
+			fatalf("read flash status register: %v", err)
 		}
 		fmt.Println(sr)
 		return
@@ -47,7 +47,7 @@ func readCommand(args []string) {
 
 	flashID, name, err := d.Flash.ReadID()
 	if err != nil {
-		fatalf("read flash ID failed: %v", err)
+		fatalf("read flash ID: %v", err)
 	}
 	if idOnly {
 		fmt.Printf("%X\t%s\n", flashID, name)
@@ -59,13 +59,13 @@ func readCommand(args []string) {
 
 	data, err := d.Flash.Read(0, nread)
 	if err != nil {
-		fatalf("read flash failed: %v", err)
+		fatalf("read flash: %v", err)
 	}
 	if outFile == "" {
 		fmt.Println(hex.Dump(data))
 		return
 	}
 	if err := os.WriteFile(outFile, data, 0644); err != nil {
-		fmt.Fprintln(os.Stderr, "write file failed:", err)
+		fmt.Fprintln(os.Stderr, "write file:", err)
 	}
 }

@@ -26,7 +26,7 @@ func writeCommand(args []string) {
 	if filename != "" {
 		file, err = os.Open(filename)
 		if err != nil {
-			fatalf("failed to open file: %v", err)
+			fatalf("open %q: %v", filename, err)
 		}
 		defer file.Close()
 	}
@@ -40,13 +40,13 @@ func writeCommand(args []string) {
 	defer d.ReleaseFPGAReset()
 
 	if err := d.Flash.PowerUp(); err != nil {
-		fatalf("flash power up failed: %v", err)
+		fatalf("flash power up: %v", err)
 	}
 	defer d.Flash.PowerDown()
 
 	flashID, name, err := d.Flash.ReadID()
 	if err != nil {
-		fatalf("read flash ID failed: %v", err)
+		fatalf("read flash ID: %v", err)
 	}
 	if name == "" {
 		fmt.Fprintf(os.Stderr, "unknown flash ID (%X)\n", flashID)
@@ -54,21 +54,21 @@ func writeCommand(args []string) {
 
 	if bulkErase {
 		if err := d.Flash.EraseChip(); err != nil {
-			fatalf("erase chip failed: %v", err)
+			fatalf("erase chip: %v", err)
 		}
 	} else {
 		stat, err := file.Stat()
 		if err != nil {
-			fatalf("failed to get file size: %v", err)
+			fatalf("file stat: %v", err)
 		}
 		if err := d.Flash.Erase(0, int(stat.Size())); err != nil {
-			fatalf("erase flash failed: %v", err)
+			fatalf("erase flash: %v", err)
 		}
 	}
 
 	if file != nil {
 		if err := d.Flash.Write(file); err != nil {
-			fatalf("write flash failed: %v", err)
+			fatalf("write flash: %v", err)
 		}
 	}
 }
