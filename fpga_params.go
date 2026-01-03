@@ -1,219 +1,231 @@
 package gice
 
-type fpgaParams struct {
-	width  int
-	height int
-	cols   []int
+type fpgaDevice struct {
+	kind       deviceKind
+	chipWidth  int
+	chipHeight int
+	cols       []int
 
-	tileType func(x, y int) tileType
+	tileKind func(x, y int) tileKind
 }
 
-type fpgaDevice string
+type deviceKind string
 
 const (
-	ice384  fpgaDevice = "384"
-	ice1K   fpgaDevice = "1k"
-	iceU4K  fpgaDevice = "u4k"
-	iceLM4k fpgaDevice = "lm4k"
-	ice5K   fpgaDevice = "5k"
-	ice8K   fpgaDevice = "8k"
+	ice384  deviceKind = "384"
+	ice1K   deviceKind = "1k"
+	iceU4K  deviceKind = "u4k"
+	iceLM4k deviceKind = "lm4k"
+	ice5K   deviceKind = "5k"
+	ice8K   deviceKind = "8k"
 )
 
-type tileType int
+type tileKind string
 
 const (
-	tileTypeCorner = iota
-	tileTypeLogic
-	tileTypeRAMB
-	tileTypeRAMT
-	tileTypeIO
-	tileTypeDSP0
-	tileTypeDSP1
-	tileTypeDSP2
-	tileTypeDSP3
-	tileTypeIPCon
-	tileTypeUnsupported
+	tileCorner      tileKind = "corner"
+	tileLogic       tileKind = "logic"
+	tileRAMB        tileKind = "ramb"
+	tileRAMT        tileKind = "ramt"
+	tileIO          tileKind = "io"
+	tileDSP0        tileKind = "dsp0"
+	tileDSP1        tileKind = "dsp1"
+	tileDSP2        tileKind = "dsp2"
+	tileDSP3        tileKind = "dsp3"
+	tileIPCon       tileKind = "ip_con"
+	tileUnsupported tileKind = ""
 )
+
+func getFPGAParams(device string) *fpgaDevice {
+	d := deviceKind(device)
+	return knownFPGAs[d]
+}
 
 // [icepack]
-var knownFPGAs = map[fpgaDevice]fpgaParams{
+var knownFPGAs = map[deviceKind]*fpgaDevice{
 	ice384: {
-		width:  6,
-		height: 8,
-		cols:   []int{18, 54, 54, 54, 54},
-		tileType: func(x, y int) tileType {
+		kind:       ice384,
+		chipWidth:  6,
+		chipHeight: 8,
+		cols:       []int{18, 54, 54, 54, 54},
+		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 7
 			yEdge := y == 0 || y == 9
 			if xEdge && yEdge {
-				return tileTypeCorner
+				return tileCorner
 			}
 			if xEdge || yEdge {
-				return tileTypeIO
+				return tileIO
 			}
-			return tileTypeLogic
+			return tileLogic
 		},
 	},
 
 	ice1K: {
-		width:  12,
-		height: 16,
-		cols:   []int{18, 54, 54, 42, 54, 54, 54},
-		tileType: func(x, y int) tileType {
+		kind:       ice1K,
+		chipWidth:  12,
+		chipHeight: 16,
+		cols:       []int{18, 54, 54, 42, 54, 54, 54},
+		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 13
 			yEdge := y == 0 || y == 17
 			if xEdge && yEdge {
-				return tileTypeCorner
+				return tileCorner
 			}
 			if xEdge || yEdge {
-				return tileTypeIO
+				return tileIO
 			}
 			if x == 3 || x == 10 {
 				if y%2 == 1 {
-					return tileTypeRAMB
+					return tileRAMB
 				}
-				return tileTypeRAMT
+				return tileRAMT
 			}
-			return tileTypeLogic
+			return tileLogic
 		},
 	},
 
 	iceU4K: {
-		width:  24,
-		height: 20,
-		cols:   []int{54, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54},
-		tileType: func(x, y int) tileType {
+		kind:       iceU4K,
+		chipWidth:  24,
+		chipHeight: 20,
+		cols:       []int{54, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54},
+		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 25
 			yEdge := y == 0 || y == 21
 			if xEdge {
 				if yEdge {
-					return tileTypeCorner
+					return tileCorner
 				}
 				switch y {
 				case 5, 13:
-					return tileTypeDSP0
+					return tileDSP0
 				case 6, 14:
-					return tileTypeDSP1
+					return tileDSP1
 				case 7, 15:
-					return tileTypeDSP2
+					return tileDSP2
 				case 8, 16:
-					return tileTypeDSP3
+					return tileDSP3
 				}
-				return tileTypeIPCon
+				return tileIPCon
 			}
 			if yEdge {
-				return tileTypeIO
+				return tileIO
 			}
 
 			if x == 6 || x == 19 {
 				if y%2 == 1 {
-					return tileTypeRAMB
+					return tileRAMB
 				}
-				return tileTypeRAMT
+				return tileRAMT
 			}
-			return tileTypeLogic
+			return tileLogic
 		},
 	},
 
 	iceLM4k: {
-		width:  24,
-		height: 20,
-		cols:   []int{18, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54},
-		tileType: func(x, y int) tileType {
+		kind:       iceLM4k,
+		chipWidth:  24,
+		chipHeight: 20,
+		cols:       []int{18, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54},
+		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 25
 			yEdge := y == 0 || y == 21
 			if xEdge && yEdge {
-				return tileTypeCorner
+				return tileCorner
 			}
 			if xEdge || yEdge {
-				return tileTypeIO
+				return tileIO
 			}
 			if x == 6 || x == 19 {
 				if y%2 == 1 {
-					return tileTypeRAMB
+					return tileRAMB
 				}
-				return tileTypeRAMT
+				return tileRAMT
 			}
-			return tileTypeLogic
+			return tileLogic
 		},
 	},
 
 	ice5K: {
-		width:  24,
-		height: 30,
-		cols:   []int{54, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54},
-		tileType: func(x, y int) tileType {
+		kind:       ice5K,
+		chipWidth:  24,
+		chipHeight: 30,
+		cols:       []int{54, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54},
+		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 25
 			yEdge := y == 0 || y == 31
 			if xEdge {
 				if yEdge {
-					return tileTypeCorner
+					return tileCorner
 				}
 				switch y {
 				case 5, 10, 15, 23:
-					return tileTypeDSP0
+					return tileDSP0
 				case 6, 11, 16, 24:
-					return tileTypeDSP1
+					return tileDSP1
 				case 7, 12, 17, 25:
-					return tileTypeDSP2
+					return tileDSP2
 				case 8, 13, 18, 26:
-					return tileTypeDSP3
+					return tileDSP3
 				}
-				return tileTypeIPCon
+				return tileIPCon
 			}
 			if xEdge || yEdge {
-				return tileTypeIO
+				return tileIO
 			}
 
 			if x == 6 || x == 19 {
 				if y%2 == 1 {
-					return tileTypeRAMB
+					return tileRAMB
 				}
-				return tileTypeRAMT
+				return tileRAMT
 			}
-			return tileTypeLogic
+			return tileLogic
 		},
 	},
 
 	ice8K: {
-		width:  32,
-		height: 32,
-		cols:   []int{18, 54, 54, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54, 54, 54},
-		tileType: func(x, y int) tileType {
+		kind:       ice8K,
+		chipWidth:  32,
+		chipHeight: 32,
+		cols:       []int{18, 54, 54, 54, 54, 54, 54, 54, 42, 54, 54, 54, 54, 54, 54, 54, 54},
+		tileKind: func(x, y int) tileKind {
 			xEdge := x == 0 || x == 33
 			yEdge := y == 0 || y == 33
 			if xEdge && yEdge {
-				return tileTypeCorner
+				return tileCorner
 			}
 			if xEdge || yEdge {
-				return tileTypeIO
+				return tileIO
 			}
 
 			if x == 8 || x == 25 {
 				if y%2 == 1 {
-					return tileTypeRAMB
+					return tileRAMB
 				}
-				return tileTypeRAMT
+				return tileRAMT
 			}
-			return tileTypeLogic
+			return tileLogic
 		},
 	},
 }
 
-func (f *fpgaParams) tileWidth(t tileType) int {
+func (*fpgaDevice) tileWidth(t tileKind) int {
 	switch t {
-	case tileTypeCorner:
+	case tileCorner:
 		return 0
-	case tileTypeLogic:
+	case tileLogic:
 		return 54
-	case tileTypeRAMB:
+	case tileRAMB:
 		return 42
-	case tileTypeRAMT:
+	case tileRAMT:
 		return 42
-	case tileTypeIO:
+	case tileIO:
 		return 18
-	case tileTypeDSP0, tileTypeDSP1, tileTypeDSP2, tileTypeDSP3:
+	case tileDSP0, tileDSP1, tileDSP2, tileDSP3:
 		return 54
-	case tileTypeIPCon:
+	case tileIPCon:
 		return 54
 	}
 	return 0
