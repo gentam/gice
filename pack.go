@@ -8,8 +8,20 @@ import (
 	"strings"
 )
 
-func Pack(w io.Writer, r io.Reader) error {
-	p := Packer{}
+type Packer struct {
+	device *fpgaDevice
+
+	comment   []byte
+	freqRange freqRange
+	NoSleep   bool
+	warmBoot  bool
+
+	cram         [][][]bool
+	bram         [][][]bool
+	SkipBRAMInit bool
+}
+
+func (p *Packer) Pack(w io.Writer, r io.Reader) error {
 	if err := p.ReadASCII(r); err != nil {
 		return err
 	}
@@ -17,19 +29,6 @@ func Pack(w io.Writer, r io.Reader) error {
 		return err
 	}
 	return nil
-}
-
-type Packer struct {
-	device *fpgaDevice
-
-	comment   []byte
-	freqRange freqRange
-	noSleep   bool // TODO: add command option
-	warmBoot  bool
-
-	cram         [][][]bool
-	bram         [][][]bool
-	skipBRAMInit bool // TODO: add command option
 }
 
 type freqRange byte
@@ -271,7 +270,7 @@ func (p *Packer) WriteBits(w io.Writer) error {
 	// https://github.com/YosysHQ/icestorm/pull/113
 	noSleepFlag := uint8(0)
 	cw.write(0x92, 0x00) // disable warm boot
-	if p.noSleep {
+	if p.NoSleep {
 		noSleepFlag = 1
 	}
 	if p.warmBoot {
@@ -368,7 +367,7 @@ func (p *Packer) WriteBits(w io.Writer) error {
 					cw.write(uint8(width - 1))
 				}
 
-				if !p.skipBRAMInit {
+				if !p.SkipBRAMInit {
 					cw.write(0x01, 0x03) // 03: write BRAM Data
 					for i := 0; i < len(bramBits); i += 8 {
 						b := uint8(0)

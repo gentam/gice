@@ -15,10 +15,12 @@ func packCommand(args []string) {
 		inFilePath   string
 		outFilePath  string
 		skipBRAMInit bool
+		noSleep      bool
 	)
 	fs.StringVar(&inFilePath, "i", "", "input file (default stdin)")
 	fs.StringVar(&outFilePath, "o", "", `output file (default: <input file>.bin; stdin → "out.bin")`)
 	fs.BoolVar(&skipBRAMInit, "n", false, "skip initializing BRAM")
+	fs.BoolVar(&noSleep, "s", false, "disable final deep-sleep SPI flash command")
 	fs.Parse(args)
 
 	inFile := os.Stdin
@@ -45,7 +47,10 @@ func packCommand(args []string) {
 	}
 	defer outFile.Close()
 
-	if err := gice.Pack(outFile, inFile); err != nil {
+	p := gice.Packer{}
+	p.SkipBRAMInit = skipBRAMInit
+	p.NoSleep = noSleep
+	if err := p.Pack(outFile, inFile); err != nil {
 		fatalf("pack: %v", err)
 	}
 }
