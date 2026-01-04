@@ -68,7 +68,8 @@ func (p *Packer) ReadASCII(r io.Reader) error {
 
 		switch cmd {
 		case ".comment":
-			p.comment = append(p.comment, rest...)
+			// icepack ignores same line comment:
+			// p.comment = append(p.comment, rest...)
 			for scanner.Scan() {
 				line = scanner.Text()
 				if line != "" && line[0] == '.' {
