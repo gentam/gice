@@ -1,6 +1,6 @@
 module github.com/gentam/gice
 
-go 1.24.1
+go 1.25
 
 require (
 	periph.io/x/conn/v3 v3.7.2
