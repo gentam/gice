@@ -13,6 +13,6 @@
 // FPGA
 //   - [Lattice-EB82]: iCEstick User Manual (https://www.latticesemi.com/view_document?document_id=50701)
 //   - [iCEBreaker]: iCEBreaker FPGA (https://github.com/icebreaker-fpga/icebreaker/blob/master/hardware/v1.0e/icebreaker-sch.pdf)
-//   - [icestorm-bitstream]: Bitstream File Format Documentation (https://github.com/YosysHQ/icestorm/blob/master/docs/source/format.rst)
+//   - [bitstream-format]: Bitstream File Format Documentation (https://github.com/YosysHQ/icestorm/blob/master/docs/source/format.rst)
 //   - [icpack]: icepack.cc (https://github.com/YosysHQ/icestorm/blob/master/icepack/icepack.cc)
 package gice

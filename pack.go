@@ -24,10 +24,12 @@ type Packer struct {
 
 	comment   []byte
 	freqRange freqRange
+	noSleep   bool // TODO: add command option
 	warmBoot  bool
 
-	cram [][][]bool
-	bram [][][]bool
+	cram         [][][]bool
+	bram         [][][]bool
+	skipBRAMInit bool // TODO: add command option
 }
 
 type freqRange byte
@@ -232,7 +234,167 @@ func (p *Packer) ReadASCII(r io.Reader) error {
 	return scanner.Err()
 }
 
+// [bitstream-format]
 func (p *Packer) WriteBits(w io.Writer) error {
+	cw := newCRCWriter(w)
+	cw.write(0xFF, 0x00) // comment start
+	for _, ch := range p.comment {
+		if ch == '\n' {
+			cw.write(0)
+		} else {
+			cw.write(ch)
+		}
+	}
+	cw.write(0x00, 0xFF) // comment end
+
+	// preamble
+	cw.write(0x7E, 0xAA, 0x99, 0x7E)
+
+	// 5: set internal oscillator frequency range
+	cw.write(0x51)
+	switch p.freqRange {
+	case freqRangeLow:
+		cw.write(0x00)
+	case freqRangeMedium:
+		cw.write(0x01)
+	case freqRangeHigh:
+		cw.write(0x02)
+	default:
+		return fmt.Errorf("unknown frequency range: %q", p.freqRange)
+	}
+
+	// 01: write CRAM Data, 05: reset CRC
+	cw.write(0x01, 0x05)
+	cw.resetCRC()
+
+	// https://github.com/YosysHQ/icestorm/pull/113
+	noSleepFlag := uint8(0)
+	cw.write(0x92, 0x00) // disable warm boot
+	if p.noSleep {
+		noSleepFlag = 1
+	}
+	if p.warmBoot {
+		cw.write(0x20 | noSleepFlag)
+	} else {
+		cw.write(0x00 | noSleepFlag)
+	}
+
+	// 6: set bank width (16-bits, MSB first)
+	cw.write(0x62)
+	width := p.device.cramWidth - 1
+	cw.write(uint8(width >> 8))
+	cw.write(uint8(width))
+	if p.device.kind != ice5K {
+		cw.write(0x72) // 7: set bank height
+		height := p.device.cramHeight
+		cw.write(uint8(height >> 8))
+		cw.write(uint8(height))
+	}
+
+	// 8: set bank offset (16-bits, MSB first)
+	cw.write(0x82, 0x00, 0x00)
+	for cramBank := range 4 {
+		cramBits := []bool{}
+		height := p.device.cramHeight
+		if p.device.kind == ice5K && cramBank%2 == 1 {
+			height = height/2 + 8
+		}
+		for cramY := range height {
+			for cramX := range p.device.cramWidth {
+				cramBits = append(cramBits, p.cram[cramBank][cramX][cramY])
+			}
+		}
+
+		if p.device.kind == ice5K {
+			cw.write(0x72) // set bank height
+			cw.write(uint8(height >> 8))
+			cw.write(uint8(height))
+		}
+
+		// 1: set bank number
+		cw.write(0x11, uint8(cramBank))
+
+		// 01: write CRAM Data
+		cw.write(0x01, 0x01)
+		for i := 0; i < len(cramBits); i += 8 {
+			b := uint8(0)
+			for j := range 8 {
+				b <<= 1
+				if cramBits[i+j] {
+					b |= 1
+				}
+			}
+			cw.write(b)
+		}
+		cw.write(0x00, 0x00) // end marker
+	}
+
+	bramChunkSize := 128
+	if p.device.bramWidth > 0 && p.device.bramHeight > 0 {
+		if p.device.kind != ice5K {
+			cw.write(0x62) // set bank width
+			width := p.device.bramWidth - 1
+			cw.write(uint8(width >> 8))
+			cw.write(uint8(width))
+		}
+
+		cw.write(0x72)
+		cw.write(uint8(bramChunkSize >> 8))
+		cw.write(uint8(bramChunkSize))
+
+		for bramBank := range 4 {
+			cw.write(0x11, uint8(bramBank))
+			for offset := 0; offset < p.device.bramHeight; offset += bramChunkSize {
+				bramBits := []bool{}
+				width := p.device.bramWidth
+				if p.device.kind == ice5K && bramBank%2 == 1 {
+					width /= 2
+				}
+
+				for bramY := range bramChunkSize {
+					for bramX := range width {
+						bramBits = append(bramBits, p.bram[bramBank][bramX][bramY+offset])
+					}
+				}
+
+				cw.write(0x82)
+				cw.write(uint8(offset >> 8))
+				cw.write(uint8(offset))
+
+				if p.device.kind == ice5K {
+					cw.write(0x62)
+					cw.write(uint8((width - 1) >> 8))
+					cw.write(uint8(width - 1))
+				}
+
+				if !p.skipBRAMInit {
+					cw.write(0x01, 0x03) // 03: write BRAM Data
+					for i := 0; i < len(bramBits); i += 8 {
+						b := uint8(0)
+						for j := range 8 {
+							b <<= 1
+							if bramBits[i+j] {
+								b |= 1
+							}
+						}
+						cw.write(b)
+					}
+					cw.write(0x00, 0x00)
+				}
+			}
+		}
+	}
+
+	// 2: CRC check
+	cw.write(0x22)
+	crc := cw.crc
+	cw.write(uint8(crc >> 8))
+	cw.write(uint8(crc))
+
+	// 6: wakeup
+	cw.write(0x01, 0x06)
+
+	cw.write(0x00) // padding
 	return nil
 }
 

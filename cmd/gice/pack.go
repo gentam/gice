@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,5 +48,4 @@ func packCommand(args []string) {
 	if err := gice.Pack(outFile, inFile); err != nil {
 		fatalf("pack: %v", err)
 	}
-	fmt.Println(outFilePath)
 }

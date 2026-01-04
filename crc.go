@@ -23,6 +23,10 @@ func (cw *crcWriter) resetCRC() {
 }
 
 func (cw *crcWriter) Write(p []byte) (int, error) {
+	return cw.write(p...)
+}
+
+func (cw *crcWriter) write(p ...byte) (int, error) {
 	n, err := cw.w.Write(p)
 	if err != nil {
 		return n, err
