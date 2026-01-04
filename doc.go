@@ -6,11 +6,13 @@
 //   - [FTDI-AN_135]: FTDI MPSSE Basics (https://ftdichip.com/wp-content/uploads/2020/08/AN_135_MPSSE_Basics.pdf)
 //   - [FTDI-DS_FT2232H]: FT2232H Hi-Speed Dual USB UART/FIFO IC Data Sheet (https://ftdichip.com/wp-content/uploads/2024/09/DS_FT2232H.pdf)
 //
-// FPGA
-//   - [Lattice-EB82]: iCEstick User Manual (https://www.latticesemi.com/view_document?document_id=50701)
-//   - [iCEBreaker]: iCEBreaker FPGA (https://github.com/icebreaker-fpga/icebreaker/blob/master/hardware/v1.0e/icebreaker-sch.pdf)
-//
 // SPI Flash
 //   - [N25Q32]: N25Q032A Micron Serial NOR Flash Memory datasheet (could not find the official public URL)
 //   - [W25Q128]: W25Q128JV-DTR Winbond Serial Flash Memory (https://www.winbond.com/resource-files/W25Q128JV_DTR%20RevD%2012232024%20Plus.pdf)
+//
+// FPGA
+//   - [Lattice-EB82]: iCEstick User Manual (https://www.latticesemi.com/view_document?document_id=50701)
+//   - [iCEBreaker]: iCEBreaker FPGA (https://github.com/icebreaker-fpga/icebreaker/blob/master/hardware/v1.0e/icebreaker-sch.pdf)
+//   - [icestorm-bitstream]: Bitstream File Format Documentation (https://github.com/YosysHQ/icestorm/blob/master/docs/source/format.rst)
+//   - [icpack]: icepack.cc (https://github.com/YosysHQ/icestorm/blob/master/icepack/icepack.cc)
 package gice

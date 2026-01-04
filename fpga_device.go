@@ -39,7 +39,7 @@ const (
 	tileUnsupported tileKind = ""
 )
 
-func getFPGAParams(device string) *fpgaDevice {
+func getFPGADevice(device string) *fpgaDevice {
 	d := deviceKind(device)
 	return knownFPGAs[d]
 }

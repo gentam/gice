@@ -46,7 +46,7 @@ func packCommand(args []string) {
 	}
 	defer outFile.Close()
 
-	if err := gice.Pack(inFile, outFile); err != nil {
+	if err := gice.Pack(outFile, inFile); err != nil {
 		fatalf("pack: %v", err)
 	}
 	fmt.Println(outFilePath)
