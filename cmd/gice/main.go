@@ -23,7 +23,7 @@ func usage() {
 Commands:
 	read	read flash memory
 	write	write/erase flash memory
-	pack	pack asc file into a bitstream
+	pack	pack ASCII file into a bitstream
 	info	print device information
 
 Run "%s <command> -h" for more information about a command.

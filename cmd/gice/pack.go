@@ -12,17 +12,16 @@ import (
 func packCommand(args []string) {
 	fs := flag.NewFlagSet("pack", flag.ExitOnError)
 	var (
-		inFilePath   string
 		outFilePath  string
 		skipBRAMInit bool
 		noSleep      bool
 	)
-	fs.StringVar(&inFilePath, "i", "", "input file (default stdin)")
 	fs.StringVar(&outFilePath, "o", "", `output file (default: <input file>.bin; stdin → "out.bin")`)
 	fs.BoolVar(&skipBRAMInit, "n", false, "skip initializing BRAM")
 	fs.BoolVar(&noSleep, "s", false, "disable final deep-sleep SPI flash command")
 	fs.Parse(args)
 
+	inFilePath := fs.Arg(0)
 	inFile := os.Stdin
 	if inFilePath != "" {
 		var err error
