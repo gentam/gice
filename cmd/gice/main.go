@@ -56,3 +56,11 @@ func main() {
 		usage()
 	}
 }
+
+func isTTY(f *os.File) (bool, error) {
+	info, err := f.Stat()
+	if err != nil {
+		return false, err
+	}
+	return (info.Mode() & os.ModeCharDevice) != 0, nil
+}

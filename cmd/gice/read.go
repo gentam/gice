@@ -15,13 +15,25 @@ func readCommand(args []string) {
 		nread      int
 		idOnly     bool
 		statusOnly bool
-		outFile    string
 	)
 	fs.IntVar(&nread, "n", 256, "number of bytes to read")
 	fs.BoolVar(&idOnly, "id", false, "just print flash ID")
 	fs.BoolVar(&statusOnly, "s", false, "just print flash status register")
-	fs.StringVar(&outFile, "o", "", "output file (default: hexdump)")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fatalUsage("invalid arguments: %v", err)
+	}
+
+	stdoutTTY, err := isTTY(os.Stdout)
+	if err != nil {
+		fatalf("stdout: %v", err)
+	}
+	outFile := os.Stdout
+	if filename := fs.Arg(0); filename != "" {
+		if outFile, err = os.Create(filename); err != nil {
+			fatalf("create file: %v", err)
+		}
+		defer outFile.Close()
+	}
 
 	d, err := gice.NewDevice()
 	if err != nil {
@@ -61,11 +73,12 @@ func readCommand(args []string) {
 	if err != nil {
 		fatalf("read flash: %v", err)
 	}
-	if outFile == "" {
+
+	if outFile == os.Stdout && stdoutTTY {
 		fmt.Println(hex.Dump(data))
 		return
 	}
-	if err := os.WriteFile(outFile, data, 0644); err != nil {
-		fmt.Fprintln(os.Stderr, "write file:", err)
+	if _, err := outFile.Write(data); err != nil {
+		fatalf("write: %v", err)
 	}
 }

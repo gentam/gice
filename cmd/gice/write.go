@@ -14,21 +14,26 @@ func writeCommand(args []string) {
 		bulkErase bool
 	)
 	fs.BoolVar(&bulkErase, "e", false, "bulk erase entire flash")
-	fs.Parse(args)
-
-	if fs.NArg() == 0 && !bulkErase {
-		fatalUsage("input file is required")
+	if err := fs.Parse(args); err != nil {
+		fatalUsage("invalid arguments: %v", err)
 	}
-	filename := fs.Arg(0)
 
-	var file *os.File
-	var err error
-	if filename != "" {
-		file, err = os.Open(filename)
+	stdinTTY, err := isTTY(os.Stdin)
+	if err != nil {
+		fatalf("stdin: %v", err)
+	}
+	inFilePath := fs.Arg(0)
+	if inFilePath == "" && stdinTTY {
+		fatalUsage("missing input")
+	}
+
+	inFile := os.Stdin
+	if inFilePath != "" {
+		inFile, err = os.Open(inFilePath)
 		if err != nil {
-			fatalf("open %q: %v", filename, err)
+			fatalf("open %q: %v", inFilePath, err)
 		}
-		defer file.Close()
+		defer inFile.Close()
 	}
 
 	d, err := gice.NewDevice()
@@ -57,7 +62,7 @@ func writeCommand(args []string) {
 			fatalf("erase chip: %v", err)
 		}
 	} else {
-		stat, err := file.Stat()
+		stat, err := inFile.Stat()
 		if err != nil {
 			fatalf("file stat: %v", err)
 		}
@@ -66,8 +71,8 @@ func writeCommand(args []string) {
 		}
 	}
 
-	if file != nil {
-		if err := d.Flash.Write(file); err != nil {
+	if inFile != nil {
+		if err := d.Flash.Write(inFile); err != nil {
 			fatalf("write flash: %v", err)
 		}
 	}

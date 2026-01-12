@@ -19,32 +19,46 @@ func packCommand(args []string) {
 	fs.StringVar(&outFilePath, "o", "", `output file (default: <input file>.bin; stdin → "out.bin")`)
 	fs.BoolVar(&skipBRAMInit, "n", false, "skip initializing BRAM")
 	fs.BoolVar(&noSleep, "s", false, "disable final deep-sleep SPI flash command")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fatalUsage("invalid arguments: %v", err)
+	}
 
+	stdinTTY, err := isTTY(os.Stdin)
+	if err != nil {
+		fatalf("stdin: %v", err)
+	}
 	inFilePath := fs.Arg(0)
+	if inFilePath == "" && stdinTTY {
+		fatalUsage("missing input")
+	}
 	inFile := os.Stdin
 	if inFilePath != "" {
-		var err error
-		inFile, err = os.Open(inFilePath)
-		if err != nil {
+		if inFile, err = os.Open(inFilePath); err != nil {
 			fatalf("open %q: %v", inFilePath, err)
 		}
 		defer inFile.Close()
 	}
 
-	if outFilePath == "" {
-		if inFilePath == "" {
-			outFilePath = "out.bin"
+	stdoutTTY, err := isTTY(os.Stdout)
+	if err != nil {
+		fatalf("stdout: %v", err)
+	}
+	if outFilePath == "" && stdoutTTY {
+		if inFilePath != "" {
+			inFilename := filepath.Base(inFilePath)
+			outFilePath = strings.TrimSuffix(inFilename, ".asc") + ".bin"
 		} else {
-			inFile := filepath.Base(inFilePath)
-			outFilePath = strings.TrimSuffix(inFile, ".asc") + ".bin"
+			outFilePath = "out.bin"
 		}
 	}
-	outFile, err := os.Create(outFilePath)
-	if err != nil {
-		fatalf("create %q: %v", outFilePath, err)
+	outFile := os.Stdout
+	if outFilePath != "" {
+		outFile, err = os.Create(outFilePath)
+		if err != nil {
+			fatalf("create %q: %v", outFilePath, err)
+		}
+		defer outFile.Close()
 	}
-	defer outFile.Close()
 
 	p := gice.Packer{}
 	p.SkipBRAMInit = skipBRAMInit
