@@ -67,3 +67,56 @@ func packCommand(args []string) {
 		fatalf("pack: %v", err)
 	}
 }
+
+func unpackCommand(args []string) {
+	fs := flag.NewFlagSet("unpack", flag.ExitOnError)
+	var (
+		outFilePath string
+	)
+	fs.StringVar(&outFilePath, "o", "", `output file (default: <input file>.asc; stdin → "out.asc")`)
+	if err := fs.Parse(args); err != nil {
+		fatalUsage("invalid arguments: %v", err)
+	}
+
+	stdinTTY, err := isTTY(os.Stdin)
+	if err != nil {
+		fatalf("stdin: %v", err)
+	}
+	inFilePath := fs.Arg(0)
+	if inFilePath == "" && stdinTTY {
+		fatalUsage("missing input")
+	}
+	inFile := os.Stdin
+	if inFilePath != "" {
+		if inFile, err = os.Open(inFilePath); err != nil {
+			fatalf("open %q: %v", inFilePath, err)
+		}
+		defer inFile.Close()
+	}
+
+	stdoutTTY, err := isTTY(os.Stdout)
+	if err != nil {
+		fatalf("stdout: %v", err)
+	}
+	if outFilePath == "" && stdoutTTY {
+		if inFilePath != "" {
+			inFilename := filepath.Base(inFilePath)
+			outFilePath = strings.TrimSuffix(inFilename, ".bin") + ".asc"
+		} else {
+			outFilePath = "out.bin"
+		}
+	}
+	outFile := os.Stdout
+	if outFilePath != "" {
+		outFile, err = os.Create(outFilePath)
+		if err != nil {
+			fatalf("create %q: %v", outFilePath, err)
+		}
+		defer outFile.Close()
+	}
+
+	p := gice.Packer{}
+	if err := p.Unpack(outFile, inFile); err != nil {
+		fatalf("unpack: %v", err)
+	}
+}

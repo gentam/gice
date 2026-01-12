@@ -31,6 +31,10 @@ func (p *Packer) Pack(w io.Writer, r io.Reader) error {
 	return nil
 }
 
+func (p *Packer) Unpack(w io.Writer, r io.Reader) error {
+	return nil
+}
+
 type freqRange byte
 
 const (

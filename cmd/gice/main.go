@@ -23,7 +23,8 @@ func usage() {
 Commands:
 	read	read flash memory
 	write	write/erase flash memory
-	pack	pack ASCII file into a bitstream
+	pack	convert ASCII input into a bitstream file
+	unpack	convert bitstream input into an ASCII file
 	info	print device information
 
 Run "%s <command> -h" for more information about a command.
@@ -47,6 +48,8 @@ func main() {
 		writeCommand(rest)
 	case "pack":
 		packCommand(rest)
+	case "unpack":
+		unpackCommand(rest)
 	case "info":
 		infoCommand()
 	case "help":
