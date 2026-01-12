@@ -16,8 +16,8 @@ type Packer struct {
 	NoSleep   bool
 	warmBoot  bool
 
-	cram         [][][]bool
-	bram         [][][]bool
+	cram         [][][]bool // bank,x,y
+	bram         [][][]bool // bank,x,y
 	SkipBRAMInit bool
 }
 
@@ -32,6 +32,12 @@ func (p *Packer) Pack(w io.Writer, r io.Reader) error {
 }
 
 func (p *Packer) Unpack(w io.Writer, r io.Reader) error {
+	if err := p.ReadBits(r); err != nil {
+		return err
+	}
+	if err := p.WriteASCII(w); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -400,6 +406,124 @@ func (p *Packer) WriteBits(w io.Writer) error {
 
 	cw.write(0x00) // padding
 	return nil
+}
+
+func (p *Packer) ReadBits(r io.Reader) error {
+	return nil
+}
+
+func (p *Packer) WriteASCII(w io.Writer) error {
+	b := strings.Builder{}
+	b.WriteString(".comment")
+	for _, c := range p.comment {
+		if c == 0 {
+			b.WriteByte('\n')
+		} else {
+			b.WriteByte(c)
+		}
+	}
+
+	b.WriteString("\n.device ")
+	b.WriteString(string(p.device.kind))
+	b.WriteByte('\n')
+	if !p.warmBoot {
+		b.WriteString(".warmboot disabled\n")
+	}
+
+	// skip nosleep
+
+	type tileBit struct {
+		bank int
+		x    int
+		y    int
+	}
+	tileBits := map[tileBit]struct{}{}
+
+	for y := range p.device.chipHeight + 2 { // +2 for IO tiles
+		for x := range p.device.chipWidth + 2 {
+			cic := newCramIndexConverter(p.device, x, y)
+			switch cic.tileKind {
+			case tileCorner, tileUnsupported:
+				continue
+			}
+
+			b.WriteByte('.')
+			b.WriteString(string(cic.tileKind))
+			b.WriteString("_tile ")
+			b.WriteString(strconv.Itoa(x))
+			b.WriteByte(' ')
+			b.WriteString(strconv.Itoa(y))
+			b.WriteByte('\n')
+
+			for bitY := range 16 {
+				for bitX := range cic.tileWidth {
+					cramBank, cramX, cramY := cic.getCRAMIndex(bitX, bitY)
+					tileBits[tileBit{cramBank, cramX, cramY}] = struct{}{}
+					if cramX > len(p.cram[cramBank]) {
+						return fmt.Errorf("cramX %d (bit %d, %d) exceeds bank size %d", cramX, bitX, bitY, len(p.cram[cramBank]))
+					}
+					if cramY > len(p.cram[cramBank][cramX]) {
+						return fmt.Errorf("cramY %d (bit %d, %d) exceeds bank %d size %d", cramY, bitX, bitY, cramBank, len(p.cram[cramBank][cramX]))
+					}
+					if p.cram[cramBank][cramX][cramY] {
+						b.WriteByte('1')
+					} else {
+						b.WriteByte('0')
+					}
+				}
+				b.WriteByte('\n')
+			}
+
+			if cic.tileKind == tileRAMB && len(p.bram) != 0 {
+				b.WriteString(".ram_data ")
+				b.WriteString(strconv.Itoa(x))
+				b.WriteByte(' ')
+				b.WriteString(strconv.Itoa(y))
+				b.WriteByte('\n')
+
+				bic := newBramIndexConverter(p.device, x, y)
+				for bitY := range 16 {
+					for bitX := 256 - 4; bitX >= 0; bitX -= 4 {
+						value := 0
+						for i := range 4 {
+							bramBrank, bramX, bramY := bic.getBramIndex(bitX+i, bitY)
+							if bramX >= len(p.bram[bramBrank]) {
+								return fmt.Errorf("bramX %d (bit %d, %d) exceeds BRAM size %d", bramX, bitX+i, bitY, len(p.bram[bramBrank]))
+							}
+							if bramY >= len(p.bram[bramBrank][bramX]) {
+								return fmt.Errorf("bramY %d (bit %d, %d) exceeds BRAM size %d", bramY, bitX+i, bitY, len(p.bram[bramBrank][bramX]))
+							}
+							if p.bram[bramBrank][bramX][bramY] {
+								value += 1 << i
+							}
+						}
+						b.WriteByte("0123456789abcdef"[value])
+					}
+					b.WriteByte('\n')
+				}
+			}
+		}
+	}
+
+	for i := range 4 {
+		for x := range p.device.cramWidth {
+			for y := range p.device.cramHeight {
+				_, ok := tileBits[tileBit{i, x, y}]
+				if p.cram[i][x][y] && !ok {
+					b.WriteString(".extra_bit ")
+					b.WriteString(strconv.Itoa(i))
+					b.WriteByte(' ')
+					b.WriteString(strconv.Itoa(x))
+					b.WriteByte(' ')
+					b.WriteString(strconv.Itoa(y))
+					b.WriteByte('\n')
+				}
+			}
+		}
+	}
+
+	_, err := w.Write([]byte(b.String()))
+	return err
 }
 
 type cramIndexConverter struct {
