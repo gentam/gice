@@ -2,24 +2,38 @@ package gice
 
 import "io"
 
-// crcWriter wraps an io.Writer with CRC update.
+const crcInit = 0xFFFF
+
+// updateCRC updates the CRC-16-CCITT checksum.
+func updateCRC(crc uint16, data byte) uint16 {
+	for i := 7; i >= 0; i-- {
+		if ((crc >> 15) ^ uint16((data>>i)&1)) != 0 {
+			crc = (crc << 1) ^ 0x1021
+		} else {
+			crc <<= 1
+		}
+	}
+	return crc
+}
+
+// crcWriter proxies writes to w while updating a CRC-16-CCITT checksum
+// (init = 0xFFFF).
 type crcWriter struct {
 	w       io.Writer
 	crc     uint16
 	written int64
 }
 
-// newCRCWriter creates a new crcWriter with initial CRC value 0xFFFF.
 func newCRCWriter(w io.Writer) *crcWriter {
 	return &crcWriter{
 		w:   w,
-		crc: 0xFFFF,
+		crc: crcInit,
 	}
 }
 
-// resetCRC resets the CRC value to 0xFFFF.
+// resetCRC resets the CRC checksum to 0xFFFF.
 func (cw *crcWriter) resetCRC() {
-	cw.crc = 0xFFFF
+	cw.crc = crcInit
 }
 
 func (cw *crcWriter) Write(p []byte) (int, error) {
@@ -34,18 +48,38 @@ func (cw *crcWriter) write(p ...byte) (int, error) {
 
 	cw.written += int64(n)
 	for _, b := range p[:n] {
-		cw.updateCRC(b)
+		cw.crc = updateCRC(cw.crc, b)
 	}
 	return n, nil
 }
 
-// updateCRC updates CRC-16-CCITT value.
-func (cw *crcWriter) updateCRC(data byte) {
-	for i := 7; i >= 0; i-- {
-		if ((cw.crc >> 15) ^ uint16((data>>i)&1)) != 0 {
-			cw.crc = (cw.crc << 1) ^ 0x1021
-		} else {
-			cw.crc <<= 1
-		}
+// crcReader proxies reads from r while updating a CRC-16-CCITT checksum
+// (init = 0xFFFF).
+type crcReader struct {
+	r    io.ByteReader
+	crc  uint16
+	read int64
+}
+
+func newCRCReader(r io.ByteReader) *crcReader {
+	return &crcReader{
+		r:   r,
+		crc: crcInit,
 	}
+}
+
+// resetCRC resets the CRC checksum to 0xFFFF.
+func (cr *crcReader) resetCRC() {
+	cr.crc = crcInit
+}
+
+func (cr *crcReader) readByte() (byte, error) {
+	b, err := cr.r.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+
+	cr.read++
+	cr.crc = updateCRC(cr.crc, b)
+	return b, nil
 }
