@@ -103,7 +103,7 @@ func unpackCommand(args []string) {
 			inFilename := filepath.Base(inFilePath)
 			outFilePath = strings.TrimSuffix(inFilename, ".bin") + ".asc"
 		} else {
-			outFilePath = "out.bin"
+			outFilePath = "out.asc"
 		}
 	}
 	outFile := os.Stdout
