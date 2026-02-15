@@ -19,9 +19,9 @@ func updateCRC(crc uint16, data byte) uint16 {
 // crcWriter proxies writes to w while updating a CRC-16-CCITT checksum
 // (init = 0xFFFF).
 type crcWriter struct {
-	w       io.Writer
-	crc     uint16
-	written int64
+	w   io.Writer
+	crc uint16
+	err error
 }
 
 func newCRCWriter(w io.Writer) *crcWriter {
@@ -37,20 +37,33 @@ func (cw *crcWriter) resetCRC() {
 }
 
 func (cw *crcWriter) Write(p []byte) (int, error) {
-	return cw.write(p...)
-}
+	if cw.err != nil {
+		return 0, cw.err
+	}
 
-func (cw *crcWriter) write(p ...byte) (int, error) {
 	n, err := cw.w.Write(p)
+	if n > 0 {
+		for _, b := range p[:n] {
+			cw.crc = updateCRC(cw.crc, b)
+		}
+	}
+
 	if err != nil {
+		cw.err = err
 		return n, err
 	}
-
-	cw.written += int64(n)
-	for _, b := range p[:n] {
-		cw.crc = updateCRC(cw.crc, b)
+	if n != len(p) {
+		cw.err = io.ErrShortWrite
+		return n, cw.err
 	}
 	return n, nil
+}
+
+func (cw *crcWriter) write(p ...byte) {
+	if cw.err != nil {
+		return
+	}
+	_, cw.err = cw.Write(p)
 }
 
 // crcReader proxies reads from r while updating a CRC-16-CCITT checksum

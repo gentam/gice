@@ -408,7 +408,7 @@ func (p *Packer) WriteBits(w io.Writer) error {
 	cw.write(0x01, 0x06)
 
 	cw.write(0x00) // padding
-	return nil
+	return cw.err
 }
 
 func (p *Packer) ReadBits(r io.Reader) error {
