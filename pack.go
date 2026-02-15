@@ -413,6 +413,10 @@ func (p *Packer) ReadBits(r io.Reader) error {
 }
 
 func (p *Packer) WriteASCII(w io.Writer) error {
+	if p.device == nil {
+		return fmt.Errorf("missing device information")
+	}
+
 	b := strings.Builder{}
 	b.WriteString(".comment")
 	for _, c := range p.comment {
