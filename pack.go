@@ -138,17 +138,9 @@ func (p *Packer) ReadASCII(r io.Reader) error {
 				return fmt.Errorf("missing .device before %s", cmd)
 			}
 
-			tx, ty, found := strings.Cut(rest, " ")
-			if !found {
-				return fmt.Errorf("invalid coordinate: %q", rest)
-			}
-			tileX, err := strconv.Atoi(tx)
+			tileX, tileY, err := parseTileCoord(rest)
 			if err != nil {
-				return fmt.Errorf("invalid X coordinate: %q", rest)
-			}
-			tileY, err := strconv.Atoi(ty)
-			if err != nil {
-				return fmt.Errorf("invalid Y coordinate: %q", rest)
+				return err
 			}
 
 			mapper := p.newCRAMTileMapper(tileX, tileY)
@@ -178,17 +170,9 @@ func (p *Packer) ReadASCII(r io.Reader) error {
 			if p.device == nil {
 				return fmt.Errorf("missing .device before %s", cmd)
 			}
-			tx, ty, found := strings.Cut(rest, " ")
-			if !found {
-				return fmt.Errorf("invalid coordinate: %q", rest)
-			}
-			tileX, err := strconv.Atoi(tx)
+			tileX, tileY, err := parseTileCoord(rest)
 			if err != nil {
-				return fmt.Errorf("invalid X coordinate: %q", rest)
-			}
-			tileY, err := strconv.Atoi(ty)
-			if err != nil {
-				return fmt.Errorf("invalid Y coordinate: %q", rest)
+				return err
 			}
 
 			mapper := p.newBRAMTileMapper(tileX, tileY)
@@ -245,6 +229,24 @@ func (p *Packer) ReadASCII(r io.Reader) error {
 		}
 	}
 	return scanner.Err()
+}
+
+func parseTileCoord(rest string) (int, int, error) {
+	fields := strings.Fields(rest)
+	if len(fields) != 2 {
+		return 0, 0, fmt.Errorf("invalid coordinate: %q", rest)
+	}
+
+	tileX, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid X coordinate: %q", fields[0])
+	}
+	tileY, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid Y coordinate: %q", fields[1])
+	}
+
+	return tileX, tileY, nil
 }
 
 // [bitstream-format]
