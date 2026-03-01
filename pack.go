@@ -133,7 +133,7 @@ func (p *Packer) ReadASCII(r io.Reader) error {
 			}
 
 		case ".io_tile", ".logic_tile", ".ramb_tile", ".ramt_tile", ".ipcon_tile",
-			".dsp0", ".dsp1", ".dsp2", ".dsp3":
+			".dsp0_tile", ".dsp1_tile", ".dsp2_tile", ".dsp3_tile":
 			if p.device == nil {
 				return fmt.Errorf("missing .device before %s", cmd)
 			}

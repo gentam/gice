@@ -35,7 +35,7 @@ const (
 	tileDSP1        tileKind = "dsp1"
 	tileDSP2        tileKind = "dsp2"
 	tileDSP3        tileKind = "dsp3"
-	tileIPCon       tileKind = "ip_con"
+	tileIPCon       tileKind = "ipcon"
 	tileUnsupported tileKind = ""
 )
 
