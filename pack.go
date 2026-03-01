@@ -21,7 +21,17 @@ type Packer struct {
 	SkipBRAMInit bool
 }
 
+func (p *Packer) resetState() {
+	p.device = nil
+	p.comment = nil
+	p.freqRange = freqRangeLow
+	p.warmBoot = true
+	p.cram = nil
+	p.bram = nil
+}
+
 func (p *Packer) Pack(w io.Writer, r io.Reader) error {
+	p.resetState()
 	if err := p.ReadASCII(r); err != nil {
 		return err
 	}
@@ -32,6 +42,7 @@ func (p *Packer) Pack(w io.Writer, r io.Reader) error {
 }
 
 func (p *Packer) Unpack(w io.Writer, r io.Reader) error {
+	p.resetState()
 	if err := p.ReadBits(r); err != nil {
 		return err
 	}
@@ -56,8 +67,7 @@ var hexMap = [256]int{
 }
 
 func (p *Packer) ReadASCII(r io.Reader) error {
-	p.freqRange = freqRangeLow
-	p.warmBoot = true
+	p.resetState()
 
 	scanner := bufio.NewScanner(r)
 	var line string
@@ -414,6 +424,7 @@ func (p *Packer) WriteBits(w io.Writer) error {
 }
 
 func (p *Packer) ReadBits(r io.Reader) error {
+	p.resetState()
 	return nil
 }
 
