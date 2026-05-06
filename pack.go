@@ -101,7 +101,7 @@ func (p *Packer) ReadASCII(r io.Reader) error {
 			}
 
 		case ".device":
-			deviceName := string(rest)
+			deviceName := strings.TrimSpace(rest)
 			d := getFPGADevice(deviceName)
 			p.device = d
 			if p.device == nil {
@@ -133,7 +133,7 @@ func (p *Packer) ReadASCII(r io.Reader) error {
 			}
 
 		case ".warmboot":
-			switch string(rest) {
+			switch strings.TrimSpace(rest) {
 			case "enabled":
 				p.warmBoot = true
 			case "disabled":
@@ -151,6 +151,9 @@ func (p *Packer) ReadASCII(r io.Reader) error {
 			tileX, tileY, err := parseTileCoord(rest)
 			if err != nil {
 				return err
+			}
+			if !p.tileCoordInRange(tileX, tileY) {
+				return fmt.Errorf("tile coordinate out of range: (%d, %d)", tileX, tileY)
 			}
 
 			mapper := p.newCRAMTileMapper(tileX, tileY)
@@ -184,6 +187,13 @@ func (p *Packer) ReadASCII(r io.Reader) error {
 			if err != nil {
 				return err
 			}
+			if !p.tileCoordInRange(tileX, tileY) {
+				return fmt.Errorf("tile coordinate out of range: (%d, %d)", tileX, tileY)
+			}
+			tileKind := p.device.tileKind(tileX, tileY)
+			if tileKind != tileRAMB {
+				return fmt.Errorf("got .ram_data for %s tile (%d, %d)", tileKind, tileX, tileY)
+			}
 
 			mapper := p.newBRAMTileMapper(tileX, tileY)
 			for bitY := 0; bitY < 16 && scanner.Scan(); bitY++ {
@@ -213,18 +223,31 @@ func (p *Packer) ReadASCII(r io.Reader) error {
 			if p.device == nil {
 				return fmt.Errorf("missing .device before %s", cmd)
 			}
-			ss := strings.SplitN(rest, " ", 3)
-			cramBank, err := strconv.Atoi(ss[0])
-			if err != nil {
-				return fmt.Errorf("invalid cram bank: %q", ss[0])
+			fields := strings.Fields(rest)
+			if len(fields) != 3 {
+				return fmt.Errorf("invalid extra bit coordinate: %q", rest)
 			}
-			cramX, err := strconv.Atoi(ss[1])
+
+			cramBank, err := strconv.Atoi(fields[0])
 			if err != nil {
-				return fmt.Errorf("invalid cram x coordinate: %q", ss[1])
+				return fmt.Errorf("invalid cram bank: %q", fields[0])
 			}
-			cramY, err := strconv.Atoi(ss[2])
+			cramX, err := strconv.Atoi(fields[1])
 			if err != nil {
-				return fmt.Errorf("invalid cram y coordinate: %q", ss[2])
+				return fmt.Errorf("invalid cram x coordinate: %q", fields[1])
+			}
+			cramY, err := strconv.Atoi(fields[2])
+			if err != nil {
+				return fmt.Errorf("invalid cram y coordinate: %q", fields[2])
+			}
+			if cramBank < 0 || cramBank >= len(p.cram) {
+				return fmt.Errorf("cram bank out of range: %d", cramBank)
+			}
+			if cramX < 0 || cramX >= len(p.cram[cramBank]) {
+				return fmt.Errorf("cram x coordinate out of range: %d", cramX)
+			}
+			if cramY < 0 || cramY >= len(p.cram[cramBank][cramX]) {
+				return fmt.Errorf("cram y coordinate out of range: %d", cramY)
 			}
 			p.cram[cramBank][cramX][cramY] = true
 
@@ -257,6 +280,19 @@ func parseTileCoord(rest string) (int, int, error) {
 	}
 
 	return tileX, tileY, nil
+}
+
+func (p *Packer) tileCoordInRange(tileX, tileY int) bool {
+	if p.device == nil {
+		return false
+	}
+	if tileX < 0 || tileX > p.device.chipWidth+1 {
+		return false
+	}
+	if tileY < 0 || tileY > p.device.chipHeight+1 {
+		return false
+	}
+	return true
 }
 
 // [bitstream-format]
